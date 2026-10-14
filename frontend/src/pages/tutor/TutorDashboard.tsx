@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Flame, Star, UserPlus } from 'lucide-react';
 import { api, errorMessage } from '../../lib/api';
-import { useApi } from '../../hooks/useapi';
+import { useApi } from '../../hooks/useApi';
 import { Alert, Avatar, Button, Field } from '../../components/ui';
 import { Badge, PageHeader } from '../../components/admin/AdminUI';
 import FormModal, { buildPayload, initialValues } from '../../components/admin/FormModal';

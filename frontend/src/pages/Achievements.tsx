@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Award, Lock, Star, Trophy } from 'lucide-react';
-import { useApi } from '../hooks/useapi';
+import { useApi } from '../hooks/useApi';
 import { formatDate } from '../lib/format';
 import { PageHeader, StatCard } from '../components/admin/AdminUI';
 import { Alert, Spinner } from '../components/ui';

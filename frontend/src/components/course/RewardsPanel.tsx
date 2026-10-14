@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Award, Pencil, Plus, Star, Trash2, Trophy } from 'lucide-react';
 import { api, errorMessage } from '../../lib/api';
-import { useApi } from '../../hooks/useapi';
+import { useApi } from '../../hooks/useApi';
 import { Alert, Button, Field } from '../ui';
 import { IconButton, StatCard } from '../admin/AdminUI';
 import FormModal, { buildPayload, initialValues } from '../admin/FormModal';

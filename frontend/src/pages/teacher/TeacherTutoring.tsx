@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Trash2 } from 'lucide-react';
 import { api, errorMessage } from '../../lib/api';
-import { useApi } from '../../hooks/useapi';
+import { useApi } from '../../hooks/useApi';
 import { DAY_NAMES } from '../../lib/course';
 import { formatDate } from '../../lib/format';
 import { SESSION_OPTIONS } from '../../lib/constants';

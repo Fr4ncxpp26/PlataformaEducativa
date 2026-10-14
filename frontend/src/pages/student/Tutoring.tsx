@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api, errorMessage } from '../../lib/api';
-import { useApi } from '../../hooks/useapi';
+import { useApi } from '../../hooks/useApi';
 import { DAY_NAMES } from '../../lib/course';
 import { formatDate, formatTime } from '../../lib/format';
 import { Alert, Avatar, Button } from '../../components/ui';

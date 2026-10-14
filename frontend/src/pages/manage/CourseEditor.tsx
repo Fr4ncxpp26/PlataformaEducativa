@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { api, errorMessage } from '../../lib/api';
-import { useApi } from '../../hooks/useapi';
+import { useApi } from '../../hooks/useApi';
 import { Alert, Button, Spinner } from '../../components/ui';
 import { Badge } from '../../components/admin/AdminUI';
 import CourseForm from '../../components/course/CourseForm';

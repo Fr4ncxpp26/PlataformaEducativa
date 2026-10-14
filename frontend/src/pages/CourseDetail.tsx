@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Clock, Lock, PlayCircle } from 'lucide-react';
 import { api, errorMessage } from '../lib/api';
-import { useApi } from '../hooks/useapi';
+import { useApi } from '../hooks/useApi';
 import { useAuth } from '../context/useAuth';
 import { LEVEL_OPTIONS } from '../lib/constants';
 import { lessonTypeLabel } from '../lib/course';

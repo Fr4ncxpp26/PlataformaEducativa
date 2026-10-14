@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useApi } from '../hooks/useapi';
+import { useApi } from '../hooks/useApi';
 import { useAuth } from '../context/useAuth';
 import { Alert, Spinner } from '../components/ui';
 import ProfileHeader from '../components/profile/ProfileHeader';

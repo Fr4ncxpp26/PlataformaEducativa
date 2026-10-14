@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { BookOpen, CalendarClock, Star, Trophy, Video } from 'lucide-react';
-import { useApi } from '../../hooks/useapi';
+import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/useAuth';
 import { formatDay, formatTime } from '../../lib/format';
 import { Alert, Spinner } from '../../components/ui';

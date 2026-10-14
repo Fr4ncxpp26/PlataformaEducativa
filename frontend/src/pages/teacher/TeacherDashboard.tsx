@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { BookOpen, CalendarClock, GraduationCap, Plus, Users } from 'lucide-react';
-import { useApi } from '../../hooks/useapi';
+import { useApi } from '../../hooks/useApi';
 import { useAuth } from '../../context/useAuth';
 import { Alert, Spinner } from '../../components/ui';
 import { Badge, StatCard } from '../../components/admin/AdminUI';

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Award } from 'lucide-react';
 import { api, errorMessage } from '../../lib/api';
-import { useApi } from '../../hooks/useapi';
+import { useApi } from '../../hooks/useApi';
 import { formatDate } from '../../lib/format';
 import { Alert, Button } from '../ui';
 import { Badge, EmptyState } from '../admin/AdminUI';

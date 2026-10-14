@@ -1,7 +1,7 @@
 import { Link, Navigate } from 'react-router-dom';
 import { Award, Flame, GraduationCap, Users } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
-import { useApi } from '../hooks/useapi';
+import { useApi } from '../hooks/useApi';
 import CourseCard from '../components/course/CourseCard';
 import type { CourseSummary } from '../types/course';
 

@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Award, BookOpen, Eye, Flame, GraduationCap, Star, Trophy } from 'lucide-react';
-import { useApi } from '../hooks/useapi';
+import { useApi } from '../hooks/useApi';
 import { formatDate } from '../lib/format';
 import { LEVEL_OPTIONS } from '../lib/constants';
 import { Alert, Avatar, Spinner } from '../components/ui';

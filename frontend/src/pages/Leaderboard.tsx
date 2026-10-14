@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Flame, Lock } from 'lucide-react';
-import { useApi } from '../hooks/useapi';
+import { useApi } from '../hooks/useApi';
 import { Alert, Avatar, Spinner } from '../components/ui';
 import { PageHeader } from '../components/admin/AdminUI';
 import type { LeaderboardData, RankRow } from '../types/community';

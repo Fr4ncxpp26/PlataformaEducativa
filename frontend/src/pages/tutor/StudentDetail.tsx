@@ -1,7 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Clock, Flame, Star, Trophy } from 'lucide-react';
 import { api, errorMessage } from '../../lib/api';
-import { useApi } from '../../hooks/useapi';
+import { useApi } from '../../hooks/useApi';
 import { formatDate, formatHours } from '../../lib/format';
 import { lessonTypeLabel } from '../../lib/course';
 import { Alert, Avatar, Button, Spinner } from '../../components/ui';

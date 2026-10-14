@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
-import { useApi } from '../hooks/useapi';
+import { useApi } from '../hooks/useApi';
 import { LEVEL_OPTIONS } from '../lib/constants';
 import { PageHeader, Pagination } from '../components/admin/AdminUI';
 import { Alert, Spinner } from '../components/ui';

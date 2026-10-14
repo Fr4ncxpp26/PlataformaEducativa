@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Award, CheckCircle2, Circle, Download, ExternalLink, Lock, Trophy } from 'lucide-react';
 import { api, errorMessage } from '../lib/api';
-import { useApi } from '../hooks/useapi';
+import { useApi } from '../hooks/useApi';
 import { embedUrl, isDirectVideo, isExam, isQuizType, lessonTypeLabel } from '../lib/course';
 import { Alert, Button, Spinner } from '../components/ui';
 import { Badge } from '../components/admin/AdminUI';
