@@ -48,3 +48,49 @@ export const errorMessage = (e: unknown) =>
     e instanceof ApiError
         ? e.details ? Object.values(e.details).flat().join('. ') : e.message
         : 'No se pudo conectar con el servidor';
+
+export type UploadFolder =
+    | 'avatars'
+    | 'courses/covers'
+    | 'courses/pdfs'
+    | 'courses/lessons'
+    | 'achievements'
+    | 'tutorings'
+    | 'certificates';
+
+export interface UploadedFileResponse {
+    url: string;
+    publicId: string;
+    format: string;
+    resourceType: string;
+    bytes: number;
+    originalFilename: string;
+}
+
+export async function uploadMediaFile(
+    file: File,
+    folder: UploadFolder,
+    previousPublicId?: string
+): Promise<UploadedFileResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', folder);
+    if (previousPublicId) {
+        formData.append('previousPublicId', previousPublicId);
+    }
+
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+    const response = await fetch(`${baseUrl.replace(/\/$/, '')}/uploads`, {
+        method: 'POST',
+        credentials: 'include', // Envía las cookies de sesión HTTP-only
+        body: formData,
+    });
+
+    if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Error al subir el archivo a Cloudinary');
+    }
+
+    const data = await response.json();
+    return data.file;
+}

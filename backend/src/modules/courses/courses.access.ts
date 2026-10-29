@@ -40,3 +40,16 @@ export async function manageByResource(
     if (!courseId) { res.status(404).json({ error: 'Recurso no encontrado' }); return null; }
     return loadManageableCourse(req, res, courseId);
 }
+
+export const canManageCourse = (user: { id: string; role: string }, course: any): boolean => {
+    const role = String(user.role).toLowerCase();
+    if (role === 'admin' || role === 'administrador') return true;
+
+    // Permitir al profesor si es el dueño/instructor del curso
+    if (role === 'profesor') {
+        const ownerId = course.teacher_id ?? course.instructor_id ?? course.created_by;
+        return ownerId === user.id;
+    }
+
+    return false;
+};

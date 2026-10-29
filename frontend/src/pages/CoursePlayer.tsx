@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Award, CheckCircle2, Circle, Download, ExternalLink, Lock, Trophy } from 'lucide-react';
 import { api, errorMessage } from '../lib/api';
@@ -13,7 +13,7 @@ function RewardBanner({ reward, onClose }: { reward: Reward; onClose: () => void
     const c = reward.course;
     const achievements = [...reward.achievements, ...(c.achievements ?? [])];
     return (
-        <div className="relative rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 p-5">
+        <div className="relative rounded-xl border border-amber-200 bg-linear-to-r from-amber-50 to-yellow-50 p-5">
             <button onClick={onClose} className="absolute right-3 top-2 text-slate-400 hover:text-slate-600" aria-label="Cerrar">×</button>
             {reward.pointsEarned > 0 && <p className="font-semibold text-amber-800">⭐ +{reward.pointsEarned} puntos</p>}
             {c.newlyCompleted && (
@@ -31,19 +31,61 @@ function LessonContent({ data }: { data: LessonData['lesson'] }) {
     const url = data.content_url;
     const embed = url ? embedUrl(url) : null;
     const inline = data.type === 'video' && url && (embed || isDirectVideo(url));
+
     return (
         <div className="space-y-4">
             {url && data.type === 'video' && (embed
                 ? <iframe src={embed} title={data.title} className="aspect-video w-full rounded-xl" allow="accelerometer; encrypted-media; picture-in-picture" allowFullScreen referrerPolicy="no-referrer" />
                 : isDirectVideo(url) ? <video src={url} controls className="aspect-video w-full rounded-xl bg-black" /> : null)}
+
             {url && !inline && (
                 <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-slate-50">
                     {data.type === 'pdf' ? <><Download size={16} /> Descargar / abrir PDF</> : <><ExternalLink size={16} /> {data.type === 'interactivo' ? 'Abrir escenario interactivo' : 'Abrir recurso'}</>}
                 </a>
             )}
-            {/* Texto plano: nunca se interpreta como HTML (evita XSS) */}
+
             {data.text_content && <div className="whitespace-pre-wrap leading-relaxed text-slate-700">{data.text_content}</div>}
             {!url && !data.text_content && <p className="text-sm text-slate-400">Esta lección aún no tiene contenido.</p>}
+
+            {data.content_url && (
+                <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900/90 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 bg-zinc-800/70 border-b border-zinc-700">
+                        <div className="flex items-center gap-2">
+                            <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-400">
+                                Recurso de la Lección
+                            </span>
+                            <span className="text-sm font-medium text-zinc-200">
+                                Material de apoyo y lectura
+                            </span>
+                        </div>
+                        <a
+                            href={data.content_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            download
+                            className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition"
+                        >
+                            Descargar Material ⬇
+                        </a>
+                    </div>
+
+                    {data.content_url.toLowerCase().endsWith('.pdf') ? (
+                        <iframe
+                            src={`${data.content_url}#toolbar=0`}
+                            title="Material PDF de la lección"
+                            className="w-full h-550px bg-zinc-950"
+                        />
+                    ) : (
+                        <div className="p-4 flex justify-center bg-zinc-950">
+                            <img
+                                src={data.content_url}
+                                alt="Material de la lección"
+                                className="max-h-550px rounded-lg object-contain"
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
@@ -52,16 +94,23 @@ export default function CoursePlayer() {
     const { slug } = useParams();
     const [params, setParams] = useSearchParams();
     const outline = useApi<Outline>(`/learning/courses/${slug}`);
-    const [done, setDone] = useState<Set<string>>(new Set());
-    const [certificateId, setCertificateId] = useState<string | null>(null);
+    const [locallyCompletedIds, setLocallyCompletedIds] = useState<string[]>([]);
     const [reward, setReward] = useState<Reward | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
 
     const o = outline.data;
-    useEffect(() => {
-        if (o) { setDone(new Set(o.completedLessonIds)); setCertificateId(o.certificateId); }
-    }, [o]);
+
+    // Calculado durante el render sin necesidad de sincronizar mediante useEffect
+    const done = useMemo(() => {
+        const set = new Set<string>(o?.completedLessonIds ?? []);
+        for (const id of locallyCompletedIds) {
+            set.add(id);
+        }
+        return set;
+    }, [o?.completedLessonIds, locallyCompletedIds]);
+
+    const certificateId = reward?.course.certificateId ?? o?.certificateId ?? null;
 
     const flat = useMemo(() => o?.modules.flatMap((m) => m.lessons) ?? [], [o]);
     const firstOpen = flat.find((l) => !done.has(l.id) && !l.locked) ?? flat[0];
@@ -74,18 +123,22 @@ export default function CoursePlayer() {
     const next = idx >= 0 ? flat[idx + 1] : undefined;
 
     const go = (id: string) => { setReward(null); setError(''); setParams({ leccion: id }); };
+
     const applyReward = (r: Reward) => {
-        if (currentId) setDone((s) => new Set(s).add(currentId));
-        if (r.course.certificateId) setCertificateId(r.course.certificateId);
+        if (currentId) setLocallyCompletedIds((prev) => [...prev, currentId]);
         if (r.pointsEarned > 0 || r.course.newlyCompleted || r.achievements.length) setReward(r);
-        outline.reload(); // recalcula desbloqueos de unidades y exámenes
+        outline.reload();
     };
 
     const complete = async () => {
         setBusy(true); setError('');
-        try { applyReward(await api<Reward>(`/learning/lessons/${currentId}/complete`, { method: 'POST', body: {} })); }
-        catch (e) { setError(errorMessage(e)); }
-        finally { setBusy(false); }
+        try {
+            applyReward(await api<Reward>(`/learning/lessons/${currentId}/complete`, { method: 'POST', body: {} }));
+        } catch (e) {
+            setError(errorMessage(e));
+        } finally {
+            setBusy(false);
+        }
     };
 
     const L = lesson.data;
@@ -114,8 +167,13 @@ export default function CoursePlayer() {
                         </div>
 
                         {isQuizType(L.lesson.type) && L.questions ? (
-                            <QuizRunner key={L.lesson.id} lessonId={L.lesson.id} kind={L.lesson.type} data={L}
-                                onResult={(r) => { if (r.passed && r.reward) applyReward(r.reward); }} />
+                            <QuizRunner
+                                key={L.lesson.id}
+                                lessonId={L.lesson.id}
+                                kind={L.lesson.type}
+                                data={L}
+                                onResult={(r) => { if (r.passed && r.reward) applyReward(r.reward); }}
+                            />
                         ) : (
                             <>
                                 <LessonContent data={L.lesson} />

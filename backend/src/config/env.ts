@@ -10,6 +10,10 @@ const schema = z.object({
     SUPABASE_URL: z.url(),
     SUPABASE_ANON_KEY: z.string().min(20),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
+    //STRIPE_SECRET_KEY: z.string().min(20),
+    CLOUDINARY_CLOUD_NAME: z.string().min(1, 'CLOUDINARY_CLOUD_NAME es requerido'),
+    CLOUDINARY_API_KEY: z.string().min(1, 'CLOUDINARY_API_KEY es requerido'),
+    CLOUDINARY_API_SECRET: z.string().min(1, 'CLOUDINARY_API_SECRET es requerido'),
 });
 
 // Si falta algo, el servidor NO arranca (falla rápido y claro)
