@@ -4,6 +4,8 @@ import {
     deleteFromCloudinary,
     CloudinaryFolder,
 } from '../../config/cloudinary';
+// Importamos tu función existente que sabemos que extrae el rol correctamente
+import { getProfile } from '../users/profile.service';
 
 const VALID_FOLDERS: CloudinaryFolder[] = [
     'avatars',
@@ -31,22 +33,36 @@ export const uploadSingleFile = async (
             ? requestedFolder
             : 'courses/lessons';
 
-        // Se verifica 'rol' (español) y 'role' (inglés), normalizado a minúsculas
+        // 1. Obtener el usuario del request (inyectado por requireAuth)
         const user = (req as any).user;
-        const userRole = (user?.rol).toLowerCase();
-
-        if (
-            ['courses/covers', 'courses/pdfs', 'courses/lessons', 'achievements', 'certificates'].includes(folder) &&
-            userRole !== 'admin' && userRole !== 'profesor'
-        ) {
-            res.status(403).json({ error: 'No tienes permisos para subir archivos a esta sección.' });
+        if (!user || !user.id) {
+            res.status(401).json({ error: 'Sesión no válida o expirada.' });
             return;
         }
 
+        // 2. Obtener el perfil real usando tu propio servicio
+        // Esto garantiza que lea la tabla correcta de tu BD
+        const profile = await getProfile(user.id);
+        const userRole = (profile?.rol);
+
+        // 3. Validar los permisos
+        if (
+            ['courses/covers', 'courses/pdfs', 'courses/lessons', 'achievements', 'certificates'].includes(folder) &&
+            userRole !== 'admin' &&
+            userRole !== 'profesor'
+        ) {
+            res.status(403).json({
+                error: `No tienes permisos para subir archivos a esta sección (rol detectado: ${userRole || 'ninguno'}).`
+            });
+            return;
+        }
+
+        // Si enviaron un publicId anterior para reemplazar (ej. cambiar portada), lo borramos
         if (req.body.previousPublicId) {
             await deleteFromCloudinary(req.body.previousPublicId);
         }
 
+        // Subir el archivo
         const uploaded = await uploadBufferToCloudinary(
             req.file.buffer,
             req.file.originalname,

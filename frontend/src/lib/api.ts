@@ -79,10 +79,11 @@ export async function uploadMediaFile(
         formData.append('previousPublicId', previousPublicId);
     }
 
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
-    const response = await fetch(`${baseUrl.replace(/\/$/, '')}/uploads`, {
+    // Usar ruta relativa para pasar por el proxy de Vite igual que api()
+    // Esto evita el bloqueo de CORS y permite el envío de la cookie SameSite=Lax
+    const response = await fetch('/api/uploads', {
         method: 'POST',
-        credentials: 'include', // Envía las cookies de sesión HTTP-only
+        credentials: 'include',
         body: formData,
     });
 
