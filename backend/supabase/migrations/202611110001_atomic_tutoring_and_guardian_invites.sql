@@ -24,6 +24,14 @@ begin
         raise exception using errcode = '22023', message = 'INVALID_ARGUMENT';
     end if;
 
+    if p_scheduled_at <> date_trunc('minute', p_scheduled_at) then
+        raise exception using errcode = '22023', message = 'SCHEDULE_MUST_USE_MINUTE_PRECISION';
+    end if;
+
+    if not exists (select 1 from pg_timezone_names where name = p_timezone) then
+        raise exception using errcode = '22023', message = 'TIMEZONE_INVALID';
+    end if;
+
     -- Bloqueos en orden determinista: dos reservas simultáneas no pueden
     -- validar el mismo horario para profesor o alumno al mismo tiempo.
     for v_lock_id in
@@ -147,3 +155,71 @@ $$;
 
 revoke all on function public.create_guardian_invite(uuid, text, timestamptz) from public, anon, authenticated;
 grant execute on function public.create_guardian_invite(uuid, text, timestamptz) to service_role;
+
+
+-- Capa adicional: impide solapamientos incluso si la tutoría se crea/edita
+-- desde el panel admin o desde otra ruta distinta a book_tutoring_session.
+create or replace function public.prevent_tutoring_session_overlap()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_lock_id text;
+begin
+    if coalesce(new.status::text, '') <> 'programada' then
+        return new;
+    end if;
+
+    if new.student_id is null or new.teacher_id is null or new.scheduled_at is null then
+        raise exception using errcode = '22023', message = 'TUTORING_PARTICIPANTS_REQUIRED';
+    end if;
+
+    if new.scheduled_at <> date_trunc('minute', new.scheduled_at) then
+        raise exception using errcode = '22023', message = 'SCHEDULE_MUST_USE_MINUTE_PRECISION';
+    end if;
+
+    -- En UPDATE también bloquea los participantes anteriores para evitar
+    -- carreras cuando una sesión cambia de profesor o de alumno.
+    for v_lock_id in
+        select distinct participant_id
+        from unnest(array[
+            new.student_id::text,
+            new.teacher_id::text,
+            case when tg_op = 'UPDATE' then old.student_id::text else null end,
+            case when tg_op = 'UPDATE' then old.teacher_id::text else null end
+        ]) as participants(participant_id)
+        where participant_id is not null
+        order by participant_id
+    loop
+        perform pg_advisory_xact_lock(hashtextextended(v_lock_id, 0));
+    end loop;
+
+    if exists (
+        select 1
+        from public.tutoring_sessions s
+        where s.id is distinct from new.id
+          and s.status::text = 'programada'
+          and (
+              s.teacher_id = new.teacher_id
+              or s.student_id = new.student_id
+          )
+          and s.scheduled_at > new.scheduled_at - interval '60 minutes'
+          and s.scheduled_at < new.scheduled_at + interval '60 minutes'
+    ) then
+        raise exception using errcode = '23P01', message = 'SLOT_ALREADY_BOOKED';
+    end if;
+
+    return new;
+end;
+$$;
+
+drop trigger if exists tutoring_sessions_prevent_overlap on public.tutoring_sessions;
+
+create trigger tutoring_sessions_prevent_overlap
+before insert or update of student_id, teacher_id, scheduled_at, status
+on public.tutoring_sessions
+for each row
+execute function public.prevent_tutoring_session_overlap();
+
