@@ -49,19 +49,33 @@ const assertLinked = async (req: Request, res: Response, studentId: string) => {
 };
 
 export const redeem = async (req: Request, res: Response) => {
-    const parsed = z.strictObject({ code: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{8}$/, 'Código inválido') }).safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ error: 'Código inválido' });
+    const parsed = z.strictObject({
+        code: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{8}$/, 'Código inválido'),
+    }).safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ error: 'Código inválido o vencido.', code: 'INVITE_INVALID' });
+    }
 
-    const now = new Date().toISOString();
-    // Canje atómico: solo un tutor puede usar el código
-    const { data: inv } = await supabaseAdmin.from('guardian_invites').update({ used_at: now })
-        .eq('code', parsed.data.code).is('used_at', null).gt('expires_at', now).select('student_id').maybeSingle();
-    if (!inv) return res.status(400).json({ error: 'Código inválido o vencido' });
+    const { data: studentId, error } = await supabaseAdmin.rpc('redeem_guardian_invite', {
+        p_guardian_id: req.user!.id,
+        p_code: parsed.data.code,
+    });
 
-    const { error } = await supabaseAdmin.from('guardian_student').insert({ guardian_id: req.user!.id, student_id: inv.student_id });
-    if (error && error.code !== '23505') return res.status(400).json({ error: dbError(error) });
-    const { data: s } = await supabaseAdmin.from('profiles').select('nombre').eq('id', inv.student_id).single();
-    return res.status(200).json({ message: `Ahora puedes ver el avance de ${s?.nombre ?? 'tu alumno'}`, student_id: inv.student_id });
+    if (error || !studentId) {
+        if (error?.message?.includes('INVITE_INVALID_OR_EXPIRED') || error?.code === 'P0002') {
+            return res.status(400).json({ error: 'Código inválido o vencido.', code: 'INVITE_INVALID' });
+        }
+        console.error('No se pudo canjear una invitación de tutor.', { code: error?.code });
+        return res.status(500).json({ error: 'No se pudo completar la vinculación. Intenta nuevamente.', code: 'INVITE_REDEEM_FAILED' });
+    }
+
+    const { data: student } = await supabaseAdmin.from('profiles')
+        .select('nombre').eq('id', studentId).maybeSingle();
+
+    return res.status(200).json({
+        message: `Ahora puedes ver el avance de ${student?.nombre ?? 'tu alumno'}`,
+        student_id: studentId,
+    });
 };
 
 export const listStudents = async (req: Request, res: Response) => {
