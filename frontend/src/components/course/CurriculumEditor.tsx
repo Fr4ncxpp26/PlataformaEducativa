@@ -7,7 +7,7 @@ import { Alert, Button } from '../ui';
 import { Badge, IconButton, Modal } from '../admin/AdminUI';
 import FormModal, { buildPayload, initialValues, FieldsGrid } from '../admin/FormModal';
 import type { FieldDef, Values } from '../admin/FormModal';
-import type { CourseFull, CourseModule, Lesson, Question } from '../../types/course';
+import type { CourseFull, CourseModule, Lesson, LessonType, Question } from '../../types/course';
 import { FileUploader } from '../FileUploader';
 
 // --- ESQUEMAS DE CAMPOS ---
@@ -29,6 +29,77 @@ const lessonFields: FieldDef[] = [
     { name: 'is_free', label: 'Vista previa gratuita', type: 'checkbox' },
     { name: 'is_published', label: 'Publicada', type: 'checkbox' },
 ];
+
+
+// --- SUB-COMPONENTE: CREACIÓN RÁPIDA DE LECCIONES ---
+type QuickLessonType = Extract<LessonType, 'video' | 'pdf' | 'quiz'>;
+
+interface QuickLessonCreatorProps {
+    moduleId: string;
+    onQuickCreate: (moduleId: string, title: string, type: QuickLessonType) => Promise<void>;
+}
+
+function QuickLessonCreator({ moduleId, onQuickCreate }: QuickLessonCreatorProps) {
+    const [title, setTitle] = useState('');
+    const [type, setType] = useState<QuickLessonType>('video');
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const cleanTitle = title.trim();
+
+        if (!cleanTitle || loading) return;
+
+        setLoading(true);
+        try {
+            await onQuickCreate(moduleId, cleanTitle, type);
+            setTitle('');
+        } catch {
+            // El componente padre muestra el error. Conservamos el título para reintentar.
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <form
+            onSubmit={handleSubmit}
+            className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-slate-50 p-2 focus-within:border-emerald-500/60"
+            aria-label="Agregar lección rápidamente"
+        >
+            <select
+                aria-label="Tipo de lección"
+                value={type}
+                disabled={loading}
+                onChange={(event) => setType(event.target.value as QuickLessonType)}
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            >
+                <option value="video">🎬 Video / Clase</option>
+                <option value="pdf">📄 Lectura PDF</option>
+                <option value="quiz">📝 Quiz Evaluación</option>
+            </select>
+
+            <input
+                type="text"
+                value={title}
+                disabled={loading}
+                required
+                autoComplete="off"
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Título de la lección y presiona Enter ↵..."
+                className="min-w-180px flex-1 rounded-lg bg-transparent px-2 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none disabled:opacity-60"
+            />
+
+            <button
+                type="submit"
+                disabled={!title.trim() || loading}
+                className="cursor-pointer rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+                {loading ? 'Creando...' : '+ Agregar'}
+            </button>
+        </form>
+    );
+}
 
 // --- SUB-COMPONENTE: FORMULARIO DE PREGUNTAS ---
 interface OptDraft { text: string; is_correct: boolean; }
@@ -253,6 +324,32 @@ export default function CurriculumEditor({ course, onChange }: { course: CourseF
         }
     };
 
+
+    // Crea una lección sencilla sin abrir el modal completo.
+    // Se deja como borrador para que puedas añadir el recurso antes de publicarla.
+    const quickCreateLesson = async (
+        moduleId: string,
+        title: string,
+        type: QuickLessonType,
+    ): Promise<void> => {
+        setError('');
+        try {
+            await api(`/manage/modules/${moduleId}/lessons`, {
+                method: 'POST',
+                body: {
+                    title,
+                    type,
+                    points: 10,
+                    is_published: false,
+                },
+            });
+            onChange();
+        } catch (err) {
+            setError(errorMessage(err));
+            throw err;
+        }
+    };
+
     const addUnit = async () => {
         const title = window.prompt('Nombre de la unidad (ej. Unidad 1: Fracciones)');
         if (!title?.trim()) return;
@@ -364,6 +461,13 @@ export default function CurriculumEditor({ course, onChange }: { course: CourseF
                             <li className="px-4 py-4 text-sm text-slate-400">Sin lecciones todavía.</li>
                         )}
                     </ul>
+
+                    <div className="px-4 pb-4">
+                        <QuickLessonCreator
+                            moduleId={module.id}
+                            onQuickCreate={quickCreateLesson}
+                        />
+                    </div>
                 </section>
             ))}
 
