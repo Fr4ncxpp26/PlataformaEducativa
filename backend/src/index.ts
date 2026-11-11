@@ -13,6 +13,7 @@ import usersRoutes from './modules/users/users.routes';
 import adminRoutes from './modules/admin/admin.routes';
 import uploadsRoutes from './modules/uploads/uploads.routes';
 import { errorHandler } from './middlewares/errorHandler';
+import { csrfProtection } from './middlewares/csrf';
 
 const app: Application = express();
 
@@ -20,12 +21,14 @@ if (env.NODE_ENV === 'production') app.set('trust proxy', 1); // detrás de Rend
 
 app.use(helmet());
 app.use(cors({ origin: env.FRONTEND_URL, credentials: true }));
+// Todas las escrituras autenticadas usan cookies HttpOnly: valida el origen del navegador.
+app.use('/api', csrfProtection);
 app.use(rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 300,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
-    message: { error: 'Demasiadas peticiones, intenta más tarde.' },
+    message: { error: 'Demasiadas solicitudes. Intenta más tarde.', code: 'RATE_LIMITED' },
 }));
 app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser()); // SIN esto req.cookies es undefined y requireAuth truena
@@ -45,6 +48,11 @@ app.use('/api/community', communityRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/uploads', uploadsRoutes);
+
+// Evita respuestas HTML por defecto en endpoints inexistentes.
+app.use('/api', (_req: Request, res: Response) => {
+    res.status(404).json({ error: 'El recurso solicitado no existe.', code: 'NOT_FOUND' });
+});
 
 app.use(errorHandler);
 
