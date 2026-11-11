@@ -19,16 +19,33 @@ export const myTutors = async (req: Request, res: Response) => {
 
 // Genera un código de un solo uso (7 días). El tutor lo canjea en su panel.
 export const createInvite = async (req: Request, res: Response) => {
-    const uid = req.user!.id;
-    await supabaseAdmin.from('guardian_invites').delete().eq('student_id', uid).is('used_at', null); // solo un código vigente
-    const expires_at = new Date(Date.now() + 7 * 864e5).toISOString();
-    for (let i = 0; i < 3; i++) {
+    const expiresAt = new Date(Date.now() + 7 * 864e5).toISOString();
+
+    for (let attempt = 0; attempt < 3; attempt++) {
         const code = makeCode();
-        const { error } = await supabaseAdmin.from('guardian_invites').insert({ code, student_id: uid, expires_at });
-        if (!error) return res.status(201).json({ code, expires_at });
-        if (error.code !== '23505') return res.status(400).json({ error: dbError(error) });
+        const { data, error } = await supabaseAdmin.rpc('create_guardian_invite', {
+            p_student_id: req.user!.id,
+            p_code: code,
+            p_expires_at: expiresAt,
+        });
+
+        if (!error && data) {
+            return res.status(201).json({ code: data.code, expires_at: data.expires_at });
+        }
+
+        if (error?.code !== '23505') {
+            console.error('No se pudo generar una invitación de tutor.', { code: error?.code });
+            return res.status(500).json({
+                error: 'No se pudo generar el código. Intenta nuevamente.',
+                code: 'INVITE_CREATE_FAILED',
+            });
+        }
     }
-    return res.status(500).json({ error: 'No se pudo generar el código' });
+
+    return res.status(503).json({
+        error: 'No se pudo generar el código. Intenta nuevamente.',
+        code: 'INVITE_CREATE_FAILED',
+    });
 };
 
 export const removeTutor = async (req: Request, res: Response) => {
