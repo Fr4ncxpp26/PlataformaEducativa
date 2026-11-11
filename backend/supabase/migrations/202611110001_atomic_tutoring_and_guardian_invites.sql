@@ -10,7 +10,7 @@ create or replace function public.book_tutoring_session(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public
 as $$
 declare
     v_local timestamp;
@@ -91,7 +91,7 @@ create or replace function public.redeem_guardian_invite(p_guardian_id uuid, p_c
 returns uuid
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public
 as $$
 declare
     v_student_id uuid;
@@ -131,7 +131,7 @@ create or replace function public.create_guardian_invite(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public
 as $$
 declare
     v_invite public.guardian_invites%rowtype;
@@ -163,7 +163,7 @@ create or replace function public.prevent_tutoring_session_overlap()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, public
 as $$
 declare
     v_lock_id text;
