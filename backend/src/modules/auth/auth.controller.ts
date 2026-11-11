@@ -75,16 +75,17 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const profile = await getProfile(data.user.id);
-if (!profile) {
-    await supabaseAdmin.auth.admin.signOut(data.session.access_token, 'local').catch(() => undefined);
-    clearAuthCookies(res);
-    return res.status(403).json({ error: 'No se pudo cargar tu perfil. Contacta con soporte.', code: 'PROFILE_UNAVAILABLE' });
-}
+    if (!profile) {
+        await supabaseAdmin.auth.admin.signOut(data.session.access_token, 'local').catch(() => undefined);
+        clearAuthCookies(res);
+        return res.status(403).json({ error: 'No se pudo cargar tu perfil. Contacta con soporte.', code: 'PROFILE_UNAVAILABLE' });
+    }
 
-const { id: _, ...profileData } = profile;
+    // El id del perfil se omite: la respuesta conserva como id canónico el de Supabase Auth.
+    const { id: _profileId, ...profileData } = profile;
 
-setAuthCookies(res, data.session);
-return res.status(200).json({ user: { id: data.user.id, email: data.user.email, ...profileData } });
+    setAuthCookies(res, data.session);
+    return res.status(200).json({ user: { id: data.user.id, email: data.user.email, ...profileData } });
 };
 
 // ---------- GOOGLE (OAuth + PKCE) ----------
@@ -162,6 +163,7 @@ export const me = async (req: Request, res: Response) => {
     const profile = await getProfile(req.user!.id);
     if (!profile) return res.status(404).json({ error: 'Perfil no disponible.', code: 'PROFILE_NOT_FOUND' });
 
-    const { id: _, ...profileData } = profile;
+    // El id del perfil se omite para evitar sobrescribir el id de Supabase Auth.
+    const { id: _profileId, ...profileData } = profile;
     return res.status(200).json({ user: { id: req.user!.id, email: req.user!.email, ...profileData } });
 };
