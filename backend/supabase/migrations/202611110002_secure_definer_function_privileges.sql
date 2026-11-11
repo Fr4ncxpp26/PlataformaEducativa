@@ -44,3 +44,5 @@ alter function public.create_guardian_invite(uuid, text, timestamptz) set search
 revoke all on function public.redeem_guardian_invite(uuid, text) from public, anon, authenticated;
 grant execute on function public.redeem_guardian_invite(uuid, text) to service_role;
 alter function public.redeem_guardian_invite(uuid, text) set search_path = pg_catalog, public;
+
+alter function public.prevent_tutoring_session_overlap() set search_path = pg_catalog, public;
