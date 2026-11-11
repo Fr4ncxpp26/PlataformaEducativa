@@ -98,35 +98,39 @@ export const slots = async (req: Request, res: Response) => {
 
 export const book = async (req: Request, res: Response) => {
     const parsed = z.strictObject({ teacher_id: z.uuid(), scheduled_at: z.iso.datetime() }).safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ error: issueMessage(parsed.error) });
-    const { teacher_id } = parsed.data;
-    const start = new Date(parsed.data.scheduled_at);
-    const ms = start.getTime();
-    const now = Date.now();
-    if (ms < now + HOUR) return res.status(400).json({ error: 'Reserva con al menos 1 hora de anticipación' });
-    if (ms > now + MAX_DAYS_AHEAD * 864e5) return res.status(400).json({ error: `Máximo ${MAX_DAYS_AHEAD} días de anticipación` });
+    if (!parsed.success) return res.status(400).json({ error: issueMessage(parsed.error), code: 'VALIDATION_ERROR' });
 
-    const { data: teacher } = await supabaseAdmin.from('profiles').select('id, rol').eq('id', teacher_id).maybeSingle();
-    if (!teacher || teacher.rol !== 'profesor') return res.status(404).json({ error: 'Profesor no encontrado' });
-
-    // Debe caer dentro de un bloque de disponibilidad (en la zona horaria de la escuela)
-    const dow = localDow(start, env.APP_TIMEZONE);
-    const min = localMinutes(start, env.APP_TIMEZONE);
-    const { data: av } = await supabaseAdmin.from('teacher_availability').select('start_time, end_time').eq('teacher_id', teacher_id).eq('day_of_week', dow);
-    if (!(av ?? []).some((a) => min >= toMin(a.start_time as string) && min + SESSION_MIN <= toMin(a.end_time as string))) {
-        return res.status(400).json({ error: 'Ese horario está fuera de la disponibilidad del profesor' });
+    const scheduledAt = new Date(parsed.data.scheduled_at);
+    if (!Number.isFinite(scheduledAt.getTime())) {
+        return res.status(400).json({ error: 'La fecha de la reserva no es válida.', code: 'INVALID_DATE' });
     }
 
-    const lo = new Date(ms - SESSION_MIN * 60000).toISOString();
-    const hi = new Date(ms + SESSION_MIN * 60000).toISOString();
-    const overlap = async (col: 'teacher_id' | 'student_id', id: string) =>
-        ((await supabaseAdmin.from('tutoring_sessions').select('id', { count: 'exact', head: true }).eq(col, id).eq('status', 'programada').gt('scheduled_at', lo).lt('scheduled_at', hi)).count ?? 0) > 0;
-    if (await overlap('teacher_id', teacher_id)) return res.status(409).json({ error: 'Ese horario ya fue reservado' });
-    if (await overlap('student_id', req.user!.id)) return res.status(409).json({ error: 'Ya tienes una tutoría en ese horario' });
+    const { data, error } = await supabaseAdmin.rpc('book_tutoring_session', {
+        p_student_id: req.user!.id,
+        p_teacher_id: parsed.data.teacher_id,
+        p_scheduled_at: scheduledAt.toISOString(),
+        p_timezone: env.APP_TIMEZONE,
+    });
 
-    const { data, error } = await supabaseAdmin.from('tutoring_sessions')
-        .insert({ student_id: req.user!.id, teacher_id, scheduled_at: start.toISOString() }).select().single();
-    if (error) return res.status(error.code === '23505' ? 409 : 400).json({ error: error.code === '23505' ? 'Ese horario ya fue reservado' : dbError(error) });
+    if (error) {
+        // El detalle técnico solo queda en el servidor; el cliente recibe códigos estables.
+        const message = error.message ?? '';
+        if (message.includes('TEACHER_NOT_FOUND')) {
+            return res.status(404).json({ error: 'Profesor no encontrado.', code: 'TEACHER_NOT_FOUND' });
+        }
+        if (message.includes('OUTSIDE_TEACHER_AVAILABILITY')) {
+            return res.status(400).json({ error: 'Ese horario está fuera de la disponibilidad del profesor.', code: 'OUTSIDE_AVAILABILITY' });
+        }
+        if (message.includes('OUTSIDE_BOOKING_WINDOW')) {
+            return res.status(400).json({ error: 'Reserva con al menos 1 hora de anticipación y máximo 60 días.', code: 'BOOKING_WINDOW_INVALID' });
+        }
+        if (message.includes('SLOT_ALREADY_BOOKED') || error.code === '23P01') {
+            return res.status(409).json({ error: 'Ese horario ya no está disponible.', code: 'SLOT_UNAVAILABLE' });
+        }
+        console.error('No se pudo crear una reserva de tutoría.', { code: error.code });
+        return res.status(500).json({ error: 'No se pudo completar la reserva. Intenta nuevamente.', code: 'BOOKING_FAILED' });
+    }
+
     return res.status(201).json({ data });
 };
 
