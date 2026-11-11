@@ -114,3 +114,36 @@ $$;
 
 revoke all on function public.redeem_guardian_invite(uuid, text) from public, anon, authenticated;
 grant execute on function public.redeem_guardian_invite(uuid, text) to service_role;
+
+create or replace function public.create_guardian_invite(
+    p_student_id uuid,
+    p_code text,
+    p_expires_at timestamptz
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    v_invite public.guardian_invites%rowtype;
+begin
+    if p_student_id is null or p_code !~ '^[A-Z0-9]{8}$' or p_expires_at <= now() then
+        raise exception using errcode = '22023', message = 'INVALID_ARGUMENT';
+    end if;
+
+    perform pg_advisory_xact_lock(hashtextextended(p_student_id::text, 0));
+
+    delete from public.guardian_invites
+     where student_id = p_student_id and used_at is null;
+
+    insert into public.guardian_invites(code, student_id, expires_at)
+    values (p_code, p_student_id, p_expires_at)
+    returning * into v_invite;
+
+    return jsonb_build_object('code', v_invite.code, 'expires_at', v_invite.expires_at);
+end;
+$$;
+
+revoke all on function public.create_guardian_invite(uuid, text, timestamptz) from public, anon, authenticated;
+grant execute on function public.create_guardian_invite(uuid, text, timestamptz) to service_role;
