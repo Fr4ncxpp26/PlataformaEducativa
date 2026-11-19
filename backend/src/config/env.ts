@@ -23,7 +23,7 @@ const schema = z.object({
     VAPID_SUBJECT: z.string().refine((value) => value.startsWith('mailto:') || value.startsWith('https://')).default('mailto:soporte@example.com'),
     NOTIFICATIONS_CRON_SECRET: z.string().min(32).optional(),
     // Opcional mientras Stripe no esté habilitado en las rutas de la aplicación.
-    //STRIPE_SECRET_KEY: optionalSecret,
+    STRIPE_SECRET_KEY: optionalSecret,
 }).superRefine((value, ctx) => {
     if (Boolean(value.VAPID_PUBLIC_KEY) !== Boolean(value.VAPID_PRIVATE_KEY)) {
         ctx.addIssue({
