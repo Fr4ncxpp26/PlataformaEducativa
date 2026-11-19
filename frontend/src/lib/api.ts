@@ -10,7 +10,35 @@ export class ApiError extends Error {
     }
 }
 
-// Solo una renovación a la vez, aunque varias peticiones fallen juntas (el refresh token es de un solo uso)
+interface CacheEntry { expiresAt: number; data: unknown }
+const responseCache = new Map<string, CacheEntry>();
+const inFlightReads = new Map<string, Promise<unknown>>();
+let cacheScope = 'anonymous';
+let cacheGeneration = 0;
+
+export function clearApiCache(): void {
+    cacheGeneration += 1;
+    responseCache.clear();
+    inFlightReads.clear();
+}
+
+export function setApiCacheScope(userId: string | null | undefined): void {
+    const nextScope = userId || 'anonymous';
+    if (nextScope !== cacheScope) {
+        cacheScope = nextScope;
+        clearApiCache();
+    }
+}
+
+const cacheTtlFor = (path: string, method: string): number => {
+    if (method !== 'GET') return 0;
+    if (path === '/public/courses' || path.startsWith('/public/courses?') || path.startsWith('/public/courses/')) return 45_000;
+    if (path.startsWith('/admin/options/') || path.startsWith('/manage/options/')) return 90_000;
+    return 0;
+};
+
+const cloneJson = <T,>(value: unknown): T => JSON.parse(JSON.stringify(value)) as T;
+
 let refreshing: Promise<boolean> | null = null;
 const refreshSession = () => {
     if (!refreshing) {
@@ -22,26 +50,53 @@ const refreshSession = () => {
     return refreshing;
 };
 
+interface Options { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown }
 const NO_RETRY = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'];
 
-interface Options { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown }
-
-export async function api<T>(path: string, opts: Options = {}, retry = true): Promise<T> {
-    const res = await fetch(`/api${path}`, {
-        method: opts.method ?? 'GET',
-        credentials: 'include', // envía las cookies httpOnly
+async function performRequest<T>(path: string, opts: Options, retry: boolean, cacheKey: string, ttl: number, generation: number): Promise<T> {
+    const method = opts.method ?? 'GET';
+    const res = await fetch('/api' + path, {
+        method,
+        credentials: 'include',
         headers: opts.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
         body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
     });
 
-    // Access token vencido -> renovar y reintentar UNA vez
     if (res.status === 401 && retry && !NO_RETRY.includes(path) && (await refreshSession())) {
-        return api<T>(path, opts, false);
+        return performRequest<T>(path, opts, false, cacheKey, ttl, generation);
     }
 
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new ApiError(res.status, data?.error ?? 'Error inesperado', data?.code, data?.errors);
+
+    if (method !== 'GET') clearApiCache();
+    else if (ttl > 0 && generation === cacheGeneration) {
+        responseCache.set(cacheKey, { expiresAt: Date.now() + ttl, data });
+    }
     return data as T;
+}
+
+export async function api<T>(path: string, opts: Options = {}, retry = true): Promise<T> {
+    const method = opts.method ?? 'GET';
+    const ttl = cacheTtlFor(path, method);
+    if (ttl <= 0) return performRequest<T>(path, opts, retry, '', 0, cacheGeneration);
+
+    const key = cacheScope + ':' + path;
+    const cached = responseCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cloneJson<T>(cached.data);
+    if (cached) responseCache.delete(key);
+
+    const pending = inFlightReads.get(key);
+    if (pending) return cloneJson<T>(await pending);
+
+    const generation = cacheGeneration;
+    const request = performRequest<T>(path, opts, retry, key, ttl, generation);
+    inFlightReads.set(key, request);
+    try {
+        return await request;
+    } finally {
+        if (inFlightReads.get(key) === request) inFlightReads.delete(key);
+    }
 }
 
 export const errorMessage = (e: unknown) =>
@@ -67,20 +122,12 @@ export interface UploadedFileResponse {
     originalFilename: string;
 }
 
-export async function uploadMediaFile(
-    file: File,
-    folder: UploadFolder,
-    previousPublicId?: string
-): Promise<UploadedFileResponse> {
+export async function uploadMediaFile(file: File, folder: UploadFolder, previousPublicId?: string): Promise<UploadedFileResponse> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('folder', folder);
-    if (previousPublicId) {
-        formData.append('previousPublicId', previousPublicId);
-    }
+    if (previousPublicId) formData.append('previousPublicId', previousPublicId);
 
-    // Usar ruta relativa para pasar por el proxy de Vite igual que api()
-    // Esto evita el bloqueo de CORS y permite el envío de la cookie SameSite=Lax
     const response = await fetch('/api/uploads', {
         method: 'POST',
         credentials: 'include',
@@ -92,6 +139,7 @@ export async function uploadMediaFile(
         throw new Error(errData.error || 'Error al subir el archivo a Cloudinary');
     }
 
+    clearApiCache();
     const data = await response.json();
     return data.file;
 }

@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useApi } from '../../hooks/useApi';
 import {
     Award, BookOpen, CalendarClock, ClipboardList, CreditCard, DollarSign, GraduationCap, RefreshCw, Users,
 } from 'lucide-react';
-import { api, errorMessage } from '../../lib/api';
 import { formatDate, formatMoney } from '../../lib/format';
 import { Alert, Button, Spinner } from '../../components/ui';
 import { Badge, PageHeader, StatCard, statusTone } from '../../components/admin/AdminUI';
@@ -11,18 +10,7 @@ import { ROL_LABEL } from '../../types/user';
 import type { Rol } from '../../types/user';
 
 export default function AdminDashboard() {
-    const [stats, setStats] = useState<AdminStats | null>(null);
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(true);
-
-    const load = useCallback(async () => {
-        setLoading(true);
-        setError('');
-        try { setStats(await api<AdminStats>('/admin/stats')); }
-        catch (e) { setError(errorMessage(e)); }
-        finally { setLoading(false); }
-    }, []);
-    useEffect(() => { void load(); }, [load]);
+    const { data: stats, error, loading, reload } = useApi<AdminStats>('/admin/stats');
 
     if (!stats && loading) return <Spinner />;
     if (!stats) return <Alert type="error">{error || 'Sin datos'}</Alert>;
@@ -34,7 +22,7 @@ export default function AdminDashboard() {
             <PageHeader
                 title="Panel de administración"
                 subtitle="Resumen general de la plataforma"
-                action={<Button variant="ghost" onClick={load} loading={loading}><span className="flex items-center gap-1"><RefreshCw size={14} /> Actualizar</span></Button>}
+                action={<Button variant="ghost" onClick={reload} loading={loading}><span className="flex items-center gap-1"><RefreshCw size={14} /> Actualizar</span></Button>}
             />
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

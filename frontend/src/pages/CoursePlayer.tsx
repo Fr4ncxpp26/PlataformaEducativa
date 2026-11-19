@@ -47,44 +47,24 @@ function LessonContent({ data }: { data: LessonData['lesson'] }) {
             {data.text_content && <div className="whitespace-pre-wrap leading-relaxed text-slate-700">{data.text_content}</div>}
             {!url && !data.text_content && <p className="text-sm text-slate-400">Esta lección aún no tiene contenido.</p>}
 
-            {data.content_url && (
-                <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900/90 overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-3 bg-zinc-800/70 border-b border-zinc-700">
-                        <div className="flex items-center gap-2">
-                            <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-400">
-                                Recurso de la Lección
-                            </span>
-                            <span className="text-sm font-medium text-zinc-200">
-                                Material de apoyo y lectura
-                            </span>
+            {url && data.type === 'pdf' && (
+                <section className="mt-6 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/90" aria-label="Documento PDF de la lección">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-700 bg-zinc-800/70 px-4 py-3">
+                        <div>
+                            <p className="text-xs font-semibold text-emerald-400">Material de la lección</p>
+                            <p className="text-sm font-medium text-zinc-100">Documento PDF</p>
                         </div>
-                        <a
-                            href={data.content_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            download
-                            className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition"
-                        >
-                            Descargar Material ⬇
+                        <a href={url} target="_blank" rel="noreferrer" download
+                            className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500">
+                            Descargar PDF
                         </a>
                     </div>
-
-                    {data.content_url.toLowerCase().endsWith('.pdf') ? (
-                        <iframe
-                            src={`${data.content_url}#toolbar=0`}
-                            title="Material PDF de la lección"
-                            className="w-full h-550px bg-zinc-950"
-                        />
+                    {url.toLowerCase().endsWith('.pdf') ? (
+                        <iframe src={`${url}#toolbar=0`} title={`PDF: ${data.title}`} className="h-[550px] w-full bg-zinc-950" />
                     ) : (
-                        <div className="p-4 flex justify-center bg-zinc-950">
-                            <img
-                                src={data.content_url}
-                                alt="Material de la lección"
-                                className="max-h-550px rounded-lg object-contain"
-                            />
-                        </div>
+                        <p className="px-4 py-6 text-sm text-zinc-300">No se puede mostrar la vista previa de este documento. Usa el botón para abrirlo.</p>
                     )}
-                </div>
+                </section>
             )}
         </div>
     );
@@ -146,7 +126,7 @@ export default function CoursePlayer() {
     const nextLocked = next?.locked && !done.has(next.id);
 
     return (
-        <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="min-w-0 space-y-5">
                 <div>
                     <Link to="/mis-cursos" className="text-sm text-slate-500 hover:text-indigo-600">← Mis cursos</Link>
@@ -159,7 +139,7 @@ export default function CoursePlayer() {
                 {!L && lesson.loading && <Spinner />}
                 {flat.length === 0 && <p className="text-sm text-slate-400">Este curso aún no tiene lecciones publicadas.</p>}
                 {L && (
-                    <article className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <article className="space-y-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
                         <div className="flex flex-wrap items-center gap-2">
                             <h2 className="text-xl font-semibold text-slate-800">{L.lesson.title}</h2>
                             <Badge tone={isExam(L.lesson.type) ? 'purple' : 'blue'}>{lessonTypeLabel(L.lesson.type)}</Badge>
@@ -192,13 +172,13 @@ export default function CoursePlayer() {
                 )}
             </div>
 
-            <aside className="h-fit space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-6">
+            <aside className="h-fit min-w-0 space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-6">
                 <div>
                     <div className="mb-1 flex justify-between text-xs text-slate-500"><span>Tu progreso</span><span>{percent}%</span></div>
                     <div className="h-2 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-indigo-500 transition-all" style={{ width: `${percent}%` }} /></div>
                 </div>
                 {certificateId && <Link to={`/verificar/${certificateId}`} className="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm font-medium text-green-700"><Award size={16} /> Certificado obtenido</Link>}
-                <nav className="space-y-4">
+                <nav aria-label="Contenido del curso" className="space-y-4">
                     {o.modules.map((m, mi) => {
                         const unitDone = m.lessons.length > 0 && m.lessons.every((l) => done.has(l.id));
                         return (
@@ -211,10 +191,10 @@ export default function CoursePlayer() {
                                         const locked = !!l.locked && !done.has(l.id);
                                         return (
                                             <li key={l.id}>
-                                                <button disabled={locked} title={l.locked ?? undefined} onClick={() => go(l.id)}
+                                                <button type="button" disabled={locked} title={l.locked ?? undefined} onClick={() => go(l.id)} aria-current={l.id === currentId ? "step" : undefined}
                                                     className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50 ${l.id === currentId ? 'bg-indigo-50 font-medium text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}>
                                                     {done.has(l.id) ? <CheckCircle2 size={16} className="shrink-0 text-green-600" /> : locked ? <Lock size={15} className="shrink-0 text-slate-400" /> : <Circle size={16} className="shrink-0 text-slate-300" />}
-                                                    <span className="line-clamp-2">{l.title}</span>
+                                                    <span className="min-w-0 flex-1 break-words">{l.title}</span>
                                                     {isExam(l.type) && <span className="ml-auto text-[10px] font-semibold uppercase text-purple-600">Examen</span>}
                                                 </button>
                                             </li>
