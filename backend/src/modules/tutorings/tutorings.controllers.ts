@@ -4,6 +4,7 @@ import { supabaseAdmin } from '../../config/supabase';
 import { env } from '../../config/env';
 import { dbError, issueMessage, paramId } from '../admin/admin.utils';
 import { dowOfDate, localDow, localMinutes, zonedToUtc } from '../../utils/time';
+import { notifyTutoringBooked, notifyTutoringCancelled, notifyTutoringUpdated } from '../notifications/notifications.service';
 
 const SESSION_MIN = 60;      // duración fija de cada tutoría
 const MAX_DAYS_AHEAD = 60;
@@ -131,6 +132,7 @@ export const book = async (req: Request, res: Response) => {
         return res.status(500).json({ error: 'No se pudo completar la reserva. Intenta nuevamente.', code: 'BOOKING_FAILED' });
     }
 
+    void notifyTutoringBooked(req.user!.id, parsed.data.teacher_id).catch(() => undefined);
     return res.status(201).json({ data });
 };
 
@@ -154,6 +156,7 @@ export const updateSession = async (req: Request, res: Response) => {
     const { data, error } = await supabaseAdmin.from('tutoring_sessions').update(parsed.data).eq('id', id).eq('teacher_id', req.user!.id).select().maybeSingle();
     if (error) return res.status(400).json({ error: dbError(error) });
     if (!data) return res.status(404).json({ error: 'Sesión no encontrada' });
+    void notifyTutoringUpdated(data.student_id as string).catch(() => undefined);
     return res.status(200).json({ data });
 };
 
@@ -166,5 +169,8 @@ export const cancelSession = async (req: Request, res: Response) => {
 
     const { error } = await supabaseAdmin.from('tutoring_sessions').update({ status: 'cancelada' }).eq('id', id);
     if (error) return res.status(400).json({ error: dbError(error) });
+    const recipientId = s.teacher_id === req.user!.id ? s.student_id as string : s.teacher_id as string;
+    const recipientRole = s.teacher_id === req.user!.id ? 'student' : 'teacher';
+    void notifyTutoringCancelled(recipientId, recipientRole).catch(() => undefined);
     return res.status(200).json({ message: 'Sesión cancelada' });
 };
