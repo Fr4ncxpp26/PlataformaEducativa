@@ -18,6 +18,10 @@ const schema = z.object({
     CLOUDINARY_CLOUD_NAME: z.string().min(1),
     CLOUDINARY_API_KEY: z.string().min(1),
     CLOUDINARY_API_SECRET: z.string().min(1),
+    VAPID_PUBLIC_KEY: z.string().min(80).optional(),
+    VAPID_PRIVATE_KEY: z.string().min(40).optional(),
+    VAPID_SUBJECT: z.string().min(6).default('mailto:soporte@example.com'),
+    NOTIFICATIONS_CRON_SECRET: z.string().min(32).optional(),
     // Opcional mientras Stripe no esté habilitado en las rutas de la aplicación.
     //STRIPE_SECRET_KEY: optionalSecret,
 });
