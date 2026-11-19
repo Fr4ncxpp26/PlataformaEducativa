@@ -34,5 +34,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
         working-directory: frontend
+      - name: Frontend ESLint
+        run: npm run lint
+        working-directory: frontend
       - run: npm run build
         working-directory: frontend

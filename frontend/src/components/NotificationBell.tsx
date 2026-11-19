@@ -45,11 +45,13 @@ export default function NotificationBell() {
     }, []);
 
     useEffect(() => {
-        void refresh();
+        // Inicia la lectura fuera del cuerpo síncrono del efecto.
+        const initialRefresh = window.setTimeout(() => { void refresh(); }, 0);
         const interval = window.setInterval(() => void refresh(), 60000);
         const onFocus = () => void refresh();
         window.addEventListener('focus', onFocus);
         return () => {
+            window.clearTimeout(initialRefresh);
             window.clearInterval(interval);
             window.removeEventListener('focus', onFocus);
         };

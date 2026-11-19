@@ -7,9 +7,11 @@ import { DAY_NAMES } from '../../lib/course';
 import { formatDate } from '../../lib/format';
 import { SESSION_OPTIONS } from '../../lib/constants';
 import { Alert, Button, Field } from '../../components/ui';
-import { Badge, IconButton, PageHeader, SelectField, statusTone } from '../../components/admin/AdminUI';
-import FormModal, { buildPayload, initialValues } from '../../components/admin/FormModal';
-import type { FieldDef } from '../../components/admin/FormModal';
+import { Badge, IconButton, PageHeader, SelectField } from '../../components/admin/AdminUI';
+import { statusTone } from '../../components/admin/adminUtils';
+import FormModal from '../../components/admin/FormModal';
+import { buildPayload, initialValues } from '../../components/admin/FormModal.utils';
+import type { FieldDef } from '../../components/admin/FormModal.utils';
 import type { Availability, TutoringSession } from '../../types/learning';
 
 const sessionFields: FieldDef[] = [

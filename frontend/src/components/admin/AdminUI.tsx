@@ -3,6 +3,8 @@ import type { ButtonHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTM
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { Option } from '../../lib/constants';
+import type { Tone } from './adminUtils';
+export type { Tone } from './adminUtils';
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
     return (
@@ -16,7 +18,6 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
     );
 }
 
-export type Tone = 'green' | 'red' | 'amber' | 'blue' | 'slate' | 'indigo' | 'purple';
 const TONES: Record<Tone, string> = {
     green: 'bg-green-50 text-green-700 ring-green-600/20',
     red: 'bg-red-50 text-red-700 ring-red-600/20',
@@ -30,14 +31,6 @@ const TONES: Record<Tone, string> = {
 export function Badge({ tone = 'slate', children }: { tone?: Tone; children: ReactNode }) {
     return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${TONES[tone]}`}>{children}</span>;
 }
-
-const STATUS_TONE: Record<string, Tone> = {
-    completado: 'green', completada: 'green', programada: 'blue', pendiente: 'amber',
-    fallido: 'red', cancelada: 'red', reembolsado: 'purple',
-    crear: 'green', editar: 'blue', eliminar: 'red', suspender: 'amber', reactivar: 'green',
-    admin: 'purple', profesor: 'indigo', editor: 'indigo', padre_tutor: 'blue',
-};
-export const statusTone = (s: string): Tone => STATUS_TONE[s] ?? 'slate';
 
 export function IconButton({ title, danger, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { title: string; danger?: boolean }) {
     return (

@@ -36,6 +36,8 @@ export default function AdminLayout() {
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
 
+    if (!user) return null;
+
     const onLogout = async () => {
         await logout();
         navigate('/login', { replace: true });
@@ -45,7 +47,7 @@ export default function AdminLayout() {
         `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${isActive ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`;
 
     const sidebar = (
-        <aside className="flex h-full w-64 flex-col bg-slate-900">
+        <aside aria-label="Navegación de administración" className="flex h-full w-64 flex-col bg-slate-900">
             <div className="flex items-center gap-2 px-5 py-5 text-white">
                 <ShieldCheck className="text-indigo-400" />
                 <div>
@@ -81,28 +83,28 @@ export default function AdminLayout() {
 
             {open && (
                 <div className="fixed inset-0 z-40 lg:hidden">
-                    <div className="absolute inset-0 bg-slate-900/60" onClick={() => setOpen(false)} />
-                    <div className="relative h-full w-64">
+                    <button type="button" aria-label="Cerrar menú de administración" className="absolute inset-0 cursor-default bg-slate-900/60" onClick={() => setOpen(false)} />
+                    <div id="admin-navigation-mobile-panel" className="relative h-full w-64">
                         {sidebar}
-                        <button onClick={() => setOpen(false)} className="absolute right-10 top-3 text-white" aria-label="Cerrar menú"><X /></button>
+                        <button type="button" onClick={() => setOpen(false)} className="absolute right-3 top-3 rounded-lg p-2 text-white hover:bg-slate-800" aria-label="Cerrar menú"><X /></button>
                     </div>
                 </div>
             )}
 
             <div className="lg:pl-64">
                 <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur">
-                    <button onClick={() => setOpen(true)} className="rounded-md p-2 text-slate-600 hover:bg-slate-100 lg:hidden" aria-label="Abrir menú">
-                        <Menu size={20} />
+                    <button type="button" onClick={() => setOpen((value) => !value)} className="rounded-md p-2 text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 lg:hidden" aria-label={open ? "Cerrar menú" : "Abrir menú"} aria-expanded={open} aria-controls="admin-navigation-mobile-panel">
+                        {open ? <X size={20} /> : <Menu size={20} />}
                     </button>
                     <div className="hidden text-sm text-slate-500 lg:block">Panel de administración</div>
                     <div className="flex items-center gap-3">
                         <NotificationBell />
-                        <Avatar nombre={user!.nombre} url={user!.avatar_url} size="h-8 w-8" />
+                        <Avatar nombre={user.nombre} url={user.avatar_url} size="h-8 w-8" />
                         <div className="hidden text-right sm:block">
                             <p className="text-sm font-medium leading-none text-slate-800">{user!.nombre}</p>
-                            <p className="mt-1 text-xs text-slate-500">{user!.email}</p>
+                            <p className="mt-1 text-xs text-slate-500">{user.email}</p>
                         </div>
-                        <button onClick={onLogout} className="flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100">
+                        <button type="button" onClick={onLogout} aria-label="Cerrar sesión" className="flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
                             <LogOut size={16} /> <span className="hidden sm:inline">Cerrar sesión</span>
                         </button>
                     </div>

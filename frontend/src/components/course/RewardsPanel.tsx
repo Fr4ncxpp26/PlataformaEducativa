@@ -5,8 +5,9 @@ import { api, errorMessage } from '../../lib/api';
 import { useApi } from '../../hooks/useApi';
 import { Alert, Button, Field } from '../ui';
 import { IconButton, StatCard } from '../admin/AdminUI';
-import FormModal, { buildPayload, initialValues } from '../admin/FormModal';
-import type { FieldDef } from '../admin/FormModal';
+import FormModal from '../admin/FormModal';
+import { buildPayload, initialValues } from '../admin/FormModal.utils';
+import type { FieldDef } from '../admin/FormModal.utils';
 import type { Achievement, CourseFull } from '../../types/course';
 
 const fields: FieldDef[] = [

@@ -1,25 +1,63 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { SetStateAction } from 'react';
 import { api, errorMessage } from '../lib/api';
 
-// GET con estado de carga/error. path=null no hace petición.
+interface ResourceState<T> {
+    path: string | null;
+    request: number;
+    data: T | null;
+    error: string;
+}
+
+// La carga se deriva de la clave de petición; el efecto solo sincroniza el GET.
 export function useApi<T>(path: string | null) {
-    const [data, setData] = useState<T | null>(null);
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(Boolean(path));
+    const [state, setState] = useState<ResourceState<T>>({
+        path: null,
+        request: -1,
+        data: null,
+        error: '',
+    });
     const [tick, setTick] = useState(0);
 
     useEffect(() => {
-        if (!path) { setData(null); setLoading(false); return; }
+        if (!path) return;
+
         let active = true;
-        setLoading(true);
-        setError('');
         api<T>(path)
-            .then((d) => { if (active) setData(d); })
-            .catch((e) => { if (active) setError(errorMessage(e)); })
-            .finally(() => { if (active) setLoading(false); });
+            .then((data) => {
+                if (active) setState({ path, request: tick, data, error: '' });
+            })
+            .catch((error: unknown) => {
+                if (!active) return;
+                setState((current) => ({
+                    path,
+                    request: tick,
+                    data: current.path === path ? current.data : null,
+                    error: errorMessage(error),
+                }));
+            });
+
         return () => { active = false; };
     }, [path, tick]);
 
-    const reload = useCallback(() => setTick((t) => t + 1), []);
-    return { data, error, loading, reload };
+    const samePath = state.path === path;
+    const currentRequest = samePath && state.request === tick;
+    const data = samePath ? state.data : null;
+    const error = currentRequest ? state.error : '';
+    const loading = Boolean(path) && !currentRequest;
+
+    const reload = useCallback(() => setTick((value) => value + 1), []);
+    const updateData = useCallback((updater: SetStateAction<T | null>) => {
+        setState((current) => {
+            if (current.path !== path || current.request !== tick) return current;
+            return {
+                ...current,
+                data: typeof updater === 'function'
+                    ? (updater as (previous: T | null) => T | null)(current.data)
+                    : updater,
+            };
+        });
+    }, [path, tick]);
+
+    return { data, error, loading, reload, updateData };
 }
