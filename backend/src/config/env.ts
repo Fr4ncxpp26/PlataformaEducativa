@@ -19,7 +19,7 @@ const schema = z.object({
     CLOUDINARY_API_KEY: z.string().min(1),
     CLOUDINARY_API_SECRET: z.string().min(1),
     // Opcional mientras Stripe no esté habilitado en las rutas de la aplicación.
-    STRIPE_SECRET_KEY: optionalSecret,
+    //STRIPE_SECRET_KEY: optionalSecret,
 });
 
 // El servidor no arranca si faltan credenciales obligatorias o las URLs son inválidas.
