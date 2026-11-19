@@ -82,7 +82,7 @@ export const updatePreferences = async (req: Request, res: Response) => {
     }
 
     const { data, error } = await supabaseAdmin.from('notification_preferences')
-        .upsert({ user_id: req.user!.id, ...parsed.data }, { onConflict: 'user_id' })
+        .upsert({ user_id: req.user!.id, ...parsed.data, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
         .select('user_id, push_enabled, tutoring_enabled, academic_enabled, courses_enabled, account_enabled, system_enabled')
         .single();
 
@@ -126,14 +126,22 @@ export const subscribePush = async (req: Request, res: Response) => {
         return res.status(409).json({ error: 'Alcanzaste el límite de 10 dispositivos registrados.', code: 'SUBSCRIPTION_LIMIT' });
     }
 
-    const { error } = await supabaseAdmin.from('notification_subscriptions')
-        .upsert({
-            user_id: req.user!.id,
-            endpoint,
-            p256dh: keys.p256dh,
-            auth: keys.auth,
-            user_agent: req.get('user-agent')?.slice(0, 500) ?? null,
-        }, { onConflict: 'endpoint' });
+    const subscriptionData = {
+        user_id: req.user!.id,
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+        user_agent: req.get('user-agent')?.slice(0, 500) ?? null,
+        updated_at: new Date().toISOString(),
+    };
+
+    // No usar upsert por endpoint: una carrera entre dos cuentas no debe reasignar
+    // silenciosamente el endpoint que pertenece a otro usuario.
+    const write = existing
+        ? supabaseAdmin.from('notification_subscriptions').update(subscriptionData)
+            .eq('endpoint', endpoint).eq('user_id', req.user!.id)
+        : supabaseAdmin.from('notification_subscriptions').insert(subscriptionData);
+    const { error } = await write;
 
     if (error) return res.status(500).json({ error: 'No se pudo registrar este dispositivo.', code: 'SUBSCRIPTION_SAVE_FAILED' });
 
@@ -164,7 +172,7 @@ export const unsubscribePush = async (req: Request, res: Response) => {
 
     if (!countError && (count ?? 0) === 0) {
         await supabaseAdmin.from('notification_preferences')
-            .upsert({ user_id: req.user!.id, push_enabled: false }, { onConflict: 'user_id' });
+            .upsert({ user_id: req.user!.id, push_enabled: false, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
     }
 
     return res.status(200).json({ message: 'Este dispositivo dejó de recibir notificaciones push.' });
