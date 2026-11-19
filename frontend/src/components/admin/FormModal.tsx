@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { errorMessage } from '../../lib/api';
-import type { Option } from '../../lib/constants';
 import { Alert, Button, Field } from '../ui';
 import { Modal, SelectField, TextAreaField } from './AdminUI';
 import type { FieldDef, Values } from './FormModal.utils';
