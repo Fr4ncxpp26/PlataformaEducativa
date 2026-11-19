@@ -35,6 +35,7 @@ import AdminAchievements from './pages/admin/AdminAchievements';
 import AdminTutorings from './pages/admin/AdminTutorings';
 import AdminPayments from './pages/admin/AdminPayments';
 import AdminAudit from './pages/admin/AdminAudit';
+import Notifications from './pages/Notifications';
 
 export default function App() {
     return (
@@ -59,6 +60,7 @@ export default function App() {
                         <Route element={<AppLayout />}>
                             <Route path="/dashboard" element={<Dashboard />} />
                             <Route path="/dashboard/perfil" element={<Profile />} />
+                            <Route path="/notificaciones" element={<Notifications />} />
                             <Route path="/ranking" element={<Leaderboard />} />
                             <Route path="/perfil/:id" element={<PublicProfile />} />
 

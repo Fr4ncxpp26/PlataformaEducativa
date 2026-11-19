@@ -14,7 +14,8 @@ export const dbError = (e: { code?: string }) =>
     e.code === '23505' ? 'Ya existe un registro igual (duplicado)'
         : e.code === '23503' ? 'Referencia inválida o el registro tiene dependencias'
             : e.code === '22P02' ? 'Formato de dato inválido'
-                : 'No se pudo completar la operación';
+                : e.code === '23P01' ? 'El horario de tutoría se empalma con otra sesión'
+                    : 'No se pudo completar la operación';
 
 // Evita inyección en filtros .or() de PostgREST
 export const sanitizeTerm = (s: string) => s.replace(/[^\p{L}\p{N}\s@._-]/gu, '').slice(0, 60);

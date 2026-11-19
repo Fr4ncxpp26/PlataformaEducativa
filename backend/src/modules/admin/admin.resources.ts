@@ -2,6 +2,7 @@ import { Request, Response, Router } from 'express';
 import { z } from 'zod';
 import { supabaseAdmin } from '../../config/supabase';
 import { dbError, issueMessage, logAudit, paramId, sanitizeTerm } from './admin.utils';
+import { notifyTutoringBooked, notifyTutoringCancelled, notifyTutoringUpdated } from '../notifications/notifications.service';
 
 interface Cfg {
     table: string;
@@ -125,6 +126,9 @@ const create = (name: string, cfg: Cfg) => async (req: Request, res: Response) =
         return res.status(400).json({ error: dbError(error) });
     }
     await logAudit(req, 'crear', name, data.id, parsed.data);
+    if (cfg.table === 'tutoring_sessions') {
+        void notifyTutoringBooked(data.student_id as string, data.teacher_id as string).catch(() => undefined);
+    }
     return res.status(201).json({ data });
 };
 
@@ -134,6 +138,9 @@ const update = (name: string, cfg: Cfg) => async (req: Request, res: Response) =
     const parsed = cfg.update!.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: issueMessage(parsed.error) });
 
+    const { data: previous } = cfg.table === 'tutoring_sessions'
+        ? await supabaseAdmin.from('tutoring_sessions').select('student_id, teacher_id, status').eq('id', id).maybeSingle()
+        : { data: null };
     const { data, error } = await supabaseAdmin.from(cfg.table).update(parsed.data as Record<string, unknown>).eq('id', id).select().single();
     if (error) {
         if (error.code === 'PGRST116') return res.status(404).json({ error: 'Registro no encontrado' });
@@ -141,6 +148,14 @@ const update = (name: string, cfg: Cfg) => async (req: Request, res: Response) =
         return res.status(400).json({ error: dbError(error) });
     }
     await logAudit(req, 'editar', name, id, parsed.data);
+    if (cfg.table === 'tutoring_sessions' && previous) {
+        if (data.status === 'cancelada' && previous.status !== 'cancelada') {
+            void notifyTutoringCancelled(data.student_id as string, 'student').catch(() => undefined);
+            void notifyTutoringCancelled(data.teacher_id as string, 'teacher').catch(() => undefined);
+        } else {
+            void notifyTutoringUpdated(data.student_id as string).catch(() => undefined);
+        }
+    }
     return res.status(200).json({ data });
 };
 

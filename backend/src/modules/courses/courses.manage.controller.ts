@@ -3,6 +3,7 @@ import { supabaseAdmin } from '../../config/supabase';
 import { dbError, issueMessage, logAudit, paramId, sanitizeTerm } from '../admin/admin.utils';
 import { courseSchema, courseUpdateSchema, issueCertSchema } from './courses.schemas';
 import { isAdmin, loadManageableCourse } from './courses.access';
+import { notifyPublishedCourse } from '../notifications/notifications.service';
 
 export const subjectOptions = async (_req: Request, res: Response) => {
     const { data } = await supabaseAdmin.from('subjects').select('id, name').order('name').limit(500);
@@ -67,6 +68,9 @@ export const updateCourse = async (req: Request, res: Response) => {
         return res.status(403).json({ error: 'Solo un administrador puede reasignar el profesor' });
     }
 
+    const { data: previousCourse } = await supabaseAdmin.from('courses')
+        .select('is_published, title, slug').eq('id', id).maybeSingle();
+
     if (parsed.data.is_published === true) { // regla editorial: no publicar cursos vacíos
         const { data: total } = await supabaseAdmin.rpc('course_lesson_total', { p_course: id });
         if (!Number(total)) return res.status(400).json({ error: 'Agrega y publica al menos una lección (en un módulo publicado) antes de publicar el curso' });
@@ -76,6 +80,14 @@ export const updateCourse = async (req: Request, res: Response) => {
     if (error) return res.status(400).json({ error: dbError(error) });
 
     await logAudit(req, 'editar', 'courses', id, parsed.data);
+    if (parsed.data.is_published === true && previousCourse?.is_published === false) {
+        void notifyPublishedCourse(
+            id,
+            String(data.title),
+            String(data.slug),
+            String(data.updated_at ?? data.created_at ?? new Date().toISOString()),
+        ).catch(() => undefined);
+    }
     return res.status(200).json({ data });
 };
 

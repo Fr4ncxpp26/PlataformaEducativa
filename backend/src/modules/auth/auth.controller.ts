@@ -33,7 +33,12 @@ export const register = async (req: Request, res: Response) => {
 // Solo padre_tutor: crea cuenta de menor ya vinculada (guardian_student).
 export const registerMinor = async (req: Request, res: Response) => {
     const parsed = registerMinorSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ errors: fieldErrors(parsed.error), code: 'VALIDATION_ERROR' });
+    if (!parsed.success) {
+        return res.status(400).json({
+            errors: fieldErrors(parsed.error),
+            code: 'VALIDATION_ERROR',
+        });
+    }
 
     const { email, password, nombre } = parsed.data;
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
@@ -44,7 +49,29 @@ export const registerMinor = async (req: Request, res: Response) => {
     });
 
     if (error || !data.user) {
-        return res.status(400).json({ error: GENERIC_REGISTER_ERROR, code: 'REGISTER_MINOR_FAILED' });
+        return res.status(400).json({
+            error: GENERIC_REGISTER_ERROR,
+            code: 'REGISTER_MINOR_FAILED',
+        });
+    }
+
+    // handle_new_user puede convertir el rol solicitado a alumno_adulto según
+    // raw_app_meta_data.provider. La ruta está protegida para padre_tutor;
+    // por eso fijamos explícitamente el rol autorizado en profiles.
+    const { data: profile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .update({ nombre, rol: 'alumno_menor' })
+        .eq('id', data.user.id)
+        .select('id')
+        .maybeSingle();
+
+    if (profileError || !profile) {
+        await supabaseAdmin.auth.admin.deleteUser(data.user.id).catch(() => undefined);
+        console.error('No se pudo asignar el perfil de menor después de crear la cuenta.');
+        return res.status(500).json({
+            error: 'No se pudo preparar la cuenta del menor. Inténtalo nuevamente.',
+            code: 'MINOR_PROFILE_FAILED',
+        });
     }
 
     const { error: linkError } = await supabaseAdmin
@@ -52,13 +79,17 @@ export const registerMinor = async (req: Request, res: Response) => {
         .insert({ guardian_id: req.user!.id, student_id: data.user.id });
 
     if (linkError) {
-        // Rollback: una cuenta sin vinculación no debe quedar creada parcialmente.
-        const { error: rollbackError } = await supabaseAdmin.auth.admin.deleteUser(data.user.id);
-        if (rollbackError) console.error('No se pudo revertir una creación de cuenta incompleta.');
-        return res.status(500).json({ error: 'No se pudo vincular la cuenta. Inténtalo nuevamente.', code: 'GUARDIAN_LINK_FAILED' });
+        // Rollback para no dejar una cuenta de menor sin vincular a su tutor.
+        await supabaseAdmin.auth.admin.deleteUser(data.user.id).catch(() => undefined);
+        return res.status(500).json({
+            error: 'No se pudo vincular la cuenta. Inténtalo nuevamente.',
+            code: 'GUARDIAN_LINK_FAILED',
+        });
     }
 
-    return res.status(201).json({ message: 'Cuenta creada y vinculada correctamente.' });
+    return res.status(201).json({
+        message: 'Cuenta creada y vinculada correctamente.',
+    });
 };
 
 // ---------- LOGIN ----------
@@ -75,16 +106,17 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const profile = await getProfile(data.user.id);
-if (!profile) {
-    await supabaseAdmin.auth.admin.signOut(data.session.access_token, 'local').catch(() => undefined);
-    clearAuthCookies(res);
-    return res.status(403).json({ error: 'No se pudo cargar tu perfil. Contacta con soporte.', code: 'PROFILE_UNAVAILABLE' });
-}
+    if (!profile) {
+        await supabaseAdmin.auth.admin.signOut(data.session.access_token, 'local').catch(() => undefined);
+        clearAuthCookies(res);
+        return res.status(403).json({ error: 'No se pudo cargar tu perfil. Contacta con soporte.', code: 'PROFILE_UNAVAILABLE' });
+    }
 
-const { id: _, ...profileData } = profile;
+    // El id del perfil se omite: la respuesta conserva como id canónico el de Supabase Auth.
+    const { id: _profileId, ...profileData } = profile;
 
-setAuthCookies(res, data.session);
-return res.status(200).json({ user: { id: data.user.id, email: data.user.email, ...profileData } });
+    setAuthCookies(res, data.session);
+    return res.status(200).json({ user: { id: data.user.id, email: data.user.email, ...profileData } });
 };
 
 // ---------- GOOGLE (OAuth + PKCE) ----------
@@ -162,6 +194,7 @@ export const me = async (req: Request, res: Response) => {
     const profile = await getProfile(req.user!.id);
     if (!profile) return res.status(404).json({ error: 'Perfil no disponible.', code: 'PROFILE_NOT_FOUND' });
 
-    const { id: _, ...profileData } = profile;
+    // El id del perfil se omite para evitar sobrescribir el id de Supabase Auth.
+    const { id: _profileId, ...profileData } = profile;
     return res.status(200).json({ user: { id: req.user!.id, email: req.user!.email, ...profileData } });
 };

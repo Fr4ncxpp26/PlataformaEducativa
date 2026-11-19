@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
 import { Avatar, Button } from '../components/ui';
+import NotificationBell from '../components/NotificationBell';
 import type { Rol } from '../types/user';
 
 type NavItem = { to: string; label: string; end?: boolean };
@@ -96,6 +97,7 @@ export default function AppLayout() {
                     </nav>
 
                     <div className="flex shrink-0 items-center gap-2">
+                        <NotificationBell />
                         <Avatar nombre={user.nombre} url={user.avatar_url} size="h-8 w-8" />
                         <span className="hidden max-w-36 truncate text-sm text-slate-700 xl:block">{user.nombre}</span>
                         <Button variant="ghost" onClick={onLogout} loading={busy} className="hidden sm:inline-flex">
