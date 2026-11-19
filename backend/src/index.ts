@@ -12,6 +12,8 @@ import communityRoutes from './modules/community/community.routes';
 import usersRoutes from './modules/users/users.routes';
 import adminRoutes from './modules/admin/admin.routes';
 import uploadsRoutes from './modules/uploads/uploads.routes';
+import notificationsRoutes from './modules/notifications/notifications.routes';
+import notificationsInternalRoutes from './modules/notifications/notifications.internal.routes';
 import { errorHandler } from './middlewares/errorHandler';
 import { csrfProtection } from './middlewares/csrf';
 
@@ -48,6 +50,10 @@ app.use('/api/community', communityRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/uploads', uploadsRoutes);
+app.use('/api/notifications', notificationsRoutes);
+
+// Endpoint servidor-a-servidor: permanece fuera de /api para no activar CSRF de navegador.
+app.use('/internal/notifications', notificationsInternalRoutes);
 
 // Evita respuestas HTML por defecto en endpoints inexistentes.
 app.use('/api', (_req: Request, res: Response) => {
