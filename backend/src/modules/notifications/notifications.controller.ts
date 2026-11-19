@@ -137,13 +137,22 @@ export const subscribePush = async (req: Request, res: Response) => {
 
     // No usar upsert por endpoint: una carrera entre dos cuentas no debe reasignar
     // silenciosamente el endpoint que pertenece a otro usuario.
-    const write = existing
-        ? supabaseAdmin.from('notification_subscriptions').update(subscriptionData)
-            .eq('endpoint', endpoint).eq('user_id', req.user!.id)
-        : supabaseAdmin.from('notification_subscriptions').insert(subscriptionData);
-    const { error } = await write;
+    let subscriptionError;
+    if (existing) {
+        const { error } = await supabaseAdmin.from('notification_subscriptions')
+            .update(subscriptionData).eq('endpoint', endpoint).eq('user_id', req.user!.id);
+        subscriptionError = error;
+    } else {
+        const { error } = await supabaseAdmin.from('notification_subscriptions').insert(subscriptionData);
+        subscriptionError = error;
+    }
 
-    if (error) return res.status(500).json({ error: 'No se pudo registrar este dispositivo.', code: 'SUBSCRIPTION_SAVE_FAILED' });
+    if (subscriptionError) {
+        if (subscriptionError.code === '23505') {
+            return res.status(409).json({ error: 'Este dispositivo ya está asociado a otra cuenta.', code: 'SUBSCRIPTION_IN_USE' });
+        }
+        return res.status(500).json({ error: 'No se pudo registrar este dispositivo.', code: 'SUBSCRIPTION_SAVE_FAILED' });
+    }
 
     const { error: preferencesError } = await supabaseAdmin.from('notification_preferences')
         .upsert({ user_id: req.user!.id, push_enabled: true }, { onConflict: 'user_id' });
