@@ -1,6 +1,4 @@
 /* Escuela Digital service worker — notification delivery only. */
-const CACHE_NAME = 'escuela-digital-static-v1';
-
 self.addEventListener('install', (event) => {
     event.waitUntil(self.skipWaiting());
 });
@@ -25,10 +23,8 @@ self.addEventListener('push', (event) => {
     event.waitUntil(
         self.registration.showNotification(title, {
             body,
-            icon: '/icons.svg',
+            icon: '/favicon.svg',
             badge: '/favicon.svg',
-            tag: 'escuela-digital-update',
-            renotify: false,
             data: { url: typeof data.url === 'string' ? data.url : '/notificaciones' },
         }),
     );
