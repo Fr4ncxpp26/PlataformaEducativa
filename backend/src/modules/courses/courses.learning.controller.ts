@@ -7,6 +7,7 @@ import {
 } from './courses.rewards';
 import { computeLocks, loadDone, loadStructure } from './courses.locks';
 import { studentCourses, weekActivity } from './courses.progress';
+import { notifyNewAchievements } from '../notifications/notifications.service';
 
 const isEnrolled = async (studentId: string, courseId: string) =>
     !!(await supabaseAdmin.from('enrollments').select('id').eq('student_id', studentId).eq('course_id', courseId).maybeSingle()).data;
@@ -116,6 +117,8 @@ export const completeLesson = async (req: Request, res: Response) => {
     await registerActivity(req.user!.id);
     const r = await completeLessonOnce(req.user!.id, id, ctx.lesson.points, parsed.data.time_spent_seconds ?? 0);
     const course = await evaluateCourseCompletion(req.user!.id, ctx.course.id);
+    const earned = [...r.achievements, ...(course.achievements ?? [])];
+    if (earned.length) void notifyNewAchievements(req.user!.id, earned).catch(() => undefined);
     return res.status(200).json({ ...r, course });
 };
 
@@ -153,7 +156,10 @@ export const submitQuiz = async (req: Request, res: Response) => {
     if (passed) {
         const r = await completeLessonOnce(req.user!.id, id, lesson.points);
         const extra = score === 100 ? await checkGlobalAchievements(req.user!.id) : []; // "Examen perfecto"
-        reward = { ...r, achievements: [...r.achievements, ...extra], course: await evaluateCourseCompletion(req.user!.id, course.id) };
+        const courseReward = await evaluateCourseCompletion(req.user!.id, course.id);
+        const earned = [...r.achievements, ...extra, ...(courseReward.achievements ?? [])];
+        if (earned.length) void notifyNewAchievements(req.user!.id, earned).catch(() => undefined);
+        reward = { ...r, achievements: [...r.achievements, ...extra], course: courseReward };
     }
     return res.status(200).json({
         score, passed, correct, total: questions.length, passScore: practice ? 0 : passScore,
