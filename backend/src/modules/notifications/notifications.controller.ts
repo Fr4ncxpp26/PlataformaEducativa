@@ -199,13 +199,20 @@ export const pushTest = async (req: Request, res: Response) => {
         return res.status(409).json({ error: 'Activa las notificaciones push en este dispositivo primero.', code: 'PUSH_NOT_ENABLED' });
     }
 
-    await createUserNotification({
+    const result = await createUserNotification({
         userId: req.user!.id,
         category: 'system',
         title: 'Prueba de notificaciones',
         message: 'Las notificaciones están configuradas correctamente.',
         href: '/notificaciones',
     });
+
+    if (result.skipped === 'PREFERENCE_DISABLED') {
+        return res.status(409).json({ error: 'Activa la categoría Sistema para enviar una prueba.', code: 'SYSTEM_NOTIFICATIONS_DISABLED' });
+    }
+    if (!result.created) {
+        return res.status(500).json({ error: 'No se pudo generar la notificación de prueba.', code: 'PUSH_TEST_FAILED' });
+    }
 
     return res.status(200).json({ message: 'Se generó una notificación de prueba.' });
 };
