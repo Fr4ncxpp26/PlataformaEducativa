@@ -72,7 +72,8 @@ export default function TeacherTutoring() {
             <section>
                 <h2 className="mb-3 font-semibold text-slate-800">Sesiones</h2>
                 <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                    <div className="max-w-full overflow-x-auto" role="region" aria-label="Tabla de sesiones de tutoría; desplázate horizontalmente para ver todas las columnas" tabIndex={0}>
+<table className="min-w-full divide-y divide-slate-200 text-sm">
                         <tbody className="divide-y divide-slate-100">
                             {(sessions.data?.data ?? []).map((s) => (
                                 <tr key={s.id}>
@@ -88,6 +89,7 @@ export default function TeacherTutoring() {
                             ))}
                         </tbody>
                     </table>
+                    </div>
                     {sessions.data && sessions.data.data.length === 0 && <p className="px-6 py-10 text-center text-sm text-slate-400">Aún no tienes sesiones reservadas.</p>}
                 </div>
             </section>
