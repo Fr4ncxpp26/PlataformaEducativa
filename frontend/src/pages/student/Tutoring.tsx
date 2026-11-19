@@ -4,7 +4,8 @@ import { useApi } from '../../hooks/useApi';
 import { DAY_NAMES } from '../../lib/course';
 import { formatDate, formatTime } from '../../lib/format';
 import { Alert, Avatar, Button } from '../../components/ui';
-import { Badge, PageHeader, statusTone } from '../../components/admin/AdminUI';
+import { Badge, PageHeader } from '../../components/admin/AdminUI';
+import { statusTone } from '../../components/admin/adminUtils';
 import type { TeacherCard, TutoringSession } from '../../types/learning';
 
 const isoDay = (offset: number) => { const d = new Date(Date.now() + offset * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };

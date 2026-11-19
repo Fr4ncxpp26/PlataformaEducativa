@@ -6,8 +6,9 @@ import { api, errorMessage } from '../../lib/api';
 import { useApi } from '../../hooks/useApi';
 import { Alert, Avatar, Button, Field } from '../../components/ui';
 import { Badge, PageHeader } from '../../components/admin/AdminUI';
-import FormModal, { buildPayload, initialValues } from '../../components/admin/FormModal';
-import type { FieldDef } from '../../components/admin/FormModal';
+import FormModal from '../../components/admin/FormModal';
+import { buildPayload, initialValues } from '../../components/admin/FormModal.utils';
+import type { FieldDef } from '../../components/admin/FormModal.utils';
 import type { GuardianStudentRow } from '../../types/learning';
 
 const minorFields: FieldDef[] = [

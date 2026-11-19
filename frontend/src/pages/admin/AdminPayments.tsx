@@ -1,6 +1,7 @@
 import { PAYMENT_OPTIONS } from '../../lib/constants';
 import { cap, formatDate, formatMoney } from '../../lib/format';
-import { Badge, statusTone } from '../../components/admin/AdminUI';
+import { Badge } from '../../components/admin/AdminUI';
+import { statusTone } from '../../components/admin/adminUtils';
 import ResourceTable from '../../components/admin/ResourceTable';
 
 interface Row {

@@ -1,5 +1,6 @@
 import { formatDate } from '../../lib/format';
-import { Badge, statusTone } from '../../components/admin/AdminUI';
+import { Badge } from '../../components/admin/AdminUI';
+import { statusTone } from '../../components/admin/adminUtils';
 import ResourceTable from '../../components/admin/ResourceTable';
 import type { AuditLog } from '../../types/admin';
 

@@ -4,7 +4,8 @@ import {
 } from 'lucide-react';
 import { formatDate, formatMoney } from '../../lib/format';
 import { Alert, Button, Spinner } from '../../components/ui';
-import { Badge, PageHeader, StatCard, statusTone } from '../../components/admin/AdminUI';
+import { Badge, PageHeader, StatCard } from '../../components/admin/AdminUI';
+import { statusTone } from '../../components/admin/adminUtils';
 import type { AdminStats } from '../../types/admin';
 import { ROL_LABEL } from '../../types/user';
 import type { Rol } from '../../types/user';

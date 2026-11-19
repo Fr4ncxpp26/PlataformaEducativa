@@ -4,49 +4,8 @@ import { errorMessage } from '../../lib/api';
 import type { Option } from '../../lib/constants';
 import { Alert, Button, Field } from '../ui';
 import { Modal, SelectField, TextAreaField } from './AdminUI';
-
-export interface FieldDef {
-    name: string;
-    label: string;
-    type?: 'text' | 'number' | 'email' | 'password' | 'url' | 'textarea' | 'select' | 'checkbox' | 'datetime-local';
-    options?: Option[];
-    required?: boolean;
-    placeholder?: string;
-    step?: string;
-}
-export type Values = Record<string, string | boolean>;
-
-const pad = (n: number) => String(n).padStart(2, '0');
-const toLocalInput = (iso: string) => {
-    const d = new Date(iso);
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-
-export const initialValues = (fields: FieldDef[], row?: Record<string, unknown>, defaults?: Values): Values =>
-    Object.fromEntries(fields.map((f) => {
-        const v = row?.[f.name];
-        if (f.type === 'checkbox') return [f.name, row ? Boolean(v) : Boolean(defaults?.[f.name])];
-        if (f.type === 'datetime-local' && typeof v === 'string' && v) return [f.name, toLocalInput(v)];
-        if (v == null) return [f.name, row ? '' : String(defaults?.[f.name] ?? '')];
-        return [f.name, String(v)];
-    }));
-
-// Crear: omite vacíos. Editar: los opcionales vacíos se envían como null (limpiar campo).
-export const buildPayload = (fields: FieldDef[], values: Values, mode: 'create' | 'edit') => {
-    const out: Record<string, unknown> = {};
-    for (const f of fields) {
-        const v = values[f.name];
-        if (f.type === 'checkbox') { out[f.name] = v; continue; }
-        if (v === '') {
-            if (mode === 'edit' && !f.required) out[f.name] = null;
-            continue;
-        }
-        if (f.type === 'number') out[f.name] = Number(v);
-        else if (f.type === 'datetime-local') out[f.name] = new Date(String(v)).toISOString();
-        else out[f.name] = v;
-    }
-    return out;
-};
+import type { FieldDef, Values } from './FormModal.utils';
+export type { FieldDef, Values } from './FormModal.utils';
 
 export function FieldsGrid({ fields, values, set }: { fields: FieldDef[]; values: Values; set: (name: string, v: string | boolean) => void }) {
     return (

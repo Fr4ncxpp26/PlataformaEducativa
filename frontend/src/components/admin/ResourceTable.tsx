@@ -6,8 +6,9 @@ import { useApi } from '../../hooks/useApi';
 import type { Option } from '../../lib/constants';
 import { Alert, Button } from '../ui';
 import { EmptyState, IconButton, Modal, PageHeader, Pagination } from './AdminUI';
-import FormModal, { buildPayload, initialValues } from './FormModal';
-import type { FieldDef } from './FormModal';
+import FormModal from './FormModal';
+import { buildPayload, initialValues } from './FormModal.utils';
+import type { FieldDef } from './FormModal.utils';
 
 export interface Column<T> { header: string; render: (row: T) => ReactNode; className?: string }
 export interface FilterDef { name: string; label: string; options: Option[] }
