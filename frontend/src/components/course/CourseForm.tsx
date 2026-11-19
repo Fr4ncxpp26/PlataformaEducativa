@@ -6,8 +6,9 @@ import { useOptions } from '../../hooks/UseOptions';
 import { useAuth } from '../../context/useAuth';
 import { Alert, Button } from '../ui';
 import { SelectField } from '../admin/AdminUI';
-import { FieldsGrid, buildPayload, initialValues } from '../admin/FormModal';
-import type { FieldDef, Values } from '../admin/FormModal';
+import { FieldsGrid } from '../admin/FormModal';
+import { buildPayload, initialValues } from '../admin/FormModal.utils';
+import type { FieldDef, Values } from '../admin/FormModal.utils';
 import type { CourseFull } from '../../types/course';
 import { FileUploader } from '../FileUploader';
 
