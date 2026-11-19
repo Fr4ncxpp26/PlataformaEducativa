@@ -113,6 +113,20 @@ export default function Notifications() {
         await updatePreference('push_enabled', false);
     };
 
+    const testPush = async () => {
+        setSaving('test');
+        setError('');
+        setSuccess('');
+        try {
+            const result = await api<{ message: string }>('/notifications/push/test', { method: 'POST' });
+            setSuccess(result.message);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'No se pudo enviar la prueba push.');
+        } finally {
+            setSaving(null);
+        }
+    };
+
     const removeDevice = async () => {
         setSaving('device');
         setError('');
@@ -251,6 +265,9 @@ export default function Notifications() {
                         ) : preferences?.push_enabled ? (
                             <div className="mt-4 space-y-3">
                                 <Alert type="success">Las notificaciones push están activadas para tu cuenta.</Alert>
+                                <Button className="w-full" onClick={() => void testPush()} loading={saving === 'test'}>
+                                    <Bell size={15} className="mr-2" /> Enviar notificación de prueba
+                                </Button>
                                 <Button variant="ghost" className="w-full" onClick={() => void disablePush()} loading={saving === 'push_enabled'}>
                                     <BellOff size={15} className="mr-2" /> Desactivar push en todos mis dispositivos
                                 </Button>
