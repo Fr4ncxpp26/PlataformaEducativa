@@ -65,6 +65,8 @@ export default function NotificationBell() {
                 ));
                 setUnread((count) => Math.max(0, count - 1));
             }
+        } catch {
+            await refresh();
         } finally {
             setLoading(false);
             setOpen(false);
@@ -76,7 +78,7 @@ export default function NotificationBell() {
         <div className="relative">
             <button
                 type="button"
-                onClick={() => setOpen((value) => !value)}
+                onClick={() => { setOpen((value) => !value); void refresh(); }}
                 aria-label={unread > 0 ? `Notificaciones, ${unread} sin leer` : 'Notificaciones'}
                 aria-expanded={open}
                 aria-haspopup="dialog"
