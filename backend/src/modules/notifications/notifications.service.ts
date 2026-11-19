@@ -159,21 +159,27 @@ export async function notifyPublishedCourse(
     slug: string,
     publishedAt: string,
 ) {
-    const { data: studentIds, error } = await supabaseAdmin
-        .from('profiles')
-        .select('id')
-        .in('rol', ['alumno_adulto', 'alumno_menor'])
-        .order('id')
-        .limit(5000);
-
-    if (error) {
-        console.error('No se pudieron obtener destinatarios del nuevo curso.', { code: error.code });
-        return;
-    }
-
     const stamp = createHash('sha256').update(publishedAt).digest('hex').slice(0, 12);
-    for (let offset = 0; offset < (studentIds ?? []).length; offset += 50) {
-        const batch = (studentIds ?? []).slice(offset, offset + 50);
+    const pageSize = 500;
+    let offset = 0;
+
+    // Paginar para no dejar fuera a los alumnos cuando la plataforma supere 5,000 cuentas.
+    while (true) {
+        const { data: students, error } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .in('rol', ['alumno_adulto', 'alumno_menor'])
+            .order('id')
+            .range(offset, offset + pageSize - 1);
+
+        if (error) {
+            console.error('No se pudieron obtener destinatarios del nuevo curso.', { code: error.code });
+            return;
+        }
+
+        const batch = students ?? [];
+        if (!batch.length) return;
+
         await Promise.all(batch.map((student) => createUserNotification({
             userId: student.id as string,
             category: 'courses',
@@ -182,8 +188,11 @@ export async function notifyPublishedCourse(
             href: `/cursos/${encodeURIComponent(slug)}`,
             dedupeKey: `course:${courseId}:published:${stamp}:user:${student.id}`,
         })));
+
+        if (batch.length < pageSize) return;
+        offset += pageSize;
     }
-}
+};
 
 export async function notifyNewAchievements(
     studentId: string,
