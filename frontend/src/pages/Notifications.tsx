@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Bell, BellOff, CheckCheck, ExternalLink, LoaderCircle, RefreshCw, Settings2, Smartphone, Trash2 } from 'lucide-react';
+import { Bell, BellOff, CheckCheck, ExternalLink, RefreshCw, Settings2, Smartphone, Trash2 } from 'lucide-react';
 import { Alert, Button, Spinner } from '../components/ui';
 import { api } from '../lib/api';
 import { enablePushOnThisDevice, removePushFromThisDevice } from '../lib/push';
