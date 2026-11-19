@@ -7,6 +7,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
 import { Avatar } from '../components/ui';
+import NotificationBell from '../components/NotificationBell';
 
 interface NavItem { to: string; label: string; icon: LucideIcon; end?: boolean }
 
@@ -95,6 +96,7 @@ export default function AdminLayout() {
                     </button>
                     <div className="hidden text-sm text-slate-500 lg:block">Panel de administración</div>
                     <div className="flex items-center gap-3">
+                        <NotificationBell />
                         <Avatar nombre={user!.nombre} url={user!.avatar_url} size="h-8 w-8" />
                         <div className="hidden text-right sm:block">
                             <p className="text-sm font-medium leading-none text-slate-800">{user!.nombre}</p>
