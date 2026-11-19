@@ -5,8 +5,9 @@ import { api, errorMessage } from '../../lib/api';
 import { LESSON_TYPE_OPTIONS, isQuizType, lessonTypeLabel } from '../../lib/course';
 import { Alert, Button } from '../ui';
 import { Badge, IconButton, Modal } from '../admin/AdminUI';
-import FormModal, { buildPayload, initialValues, FieldsGrid } from '../admin/FormModal';
-import type { FieldDef, Values } from '../admin/FormModal';
+import FormModal, { FieldsGrid } from '../admin/FormModal';
+import { buildPayload, initialValues } from '../admin/FormModal.utils';
+import type { FieldDef, Values } from '../admin/FormModal.utils';
 import type { CourseFull, CourseModule, Lesson, LessonType, Question } from '../../types/course';
 import { FileUploader } from '../FileUploader';
 

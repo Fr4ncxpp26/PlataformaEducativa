@@ -4,7 +4,8 @@ import { useApi } from '../../hooks/useApi';
 import { DAY_NAMES } from '../../lib/course';
 import { formatDate, formatTime } from '../../lib/format';
 import { Alert, Avatar, Button } from '../../components/ui';
-import { Badge, PageHeader, statusTone } from '../../components/admin/AdminUI';
+import { Badge, PageHeader } from '../../components/admin/AdminUI';
+import { statusTone } from '../../components/admin/adminUtils';
 import type { TeacherCard, TutoringSession } from '../../types/learning';
 
 const isoDay = (offset: number) => { const d = new Date(Date.now() + offset * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -71,7 +72,8 @@ export default function Tutoring() {
             <section>
                 <h2 className="mb-3 font-semibold text-slate-800">Mis sesiones</h2>
                 <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                    <div className="max-w-full overflow-x-auto" role="region" aria-label="Tabla de mis tutorías; desplázate horizontalmente para ver todas las columnas" tabIndex={0}>
+<table className="min-w-full divide-y divide-slate-200 text-sm">
                         <tbody className="divide-y divide-slate-100">
                             {(mine.data?.data ?? []).map((s) => (
                                 <tr key={s.id}>
@@ -84,6 +86,7 @@ export default function Tutoring() {
                             ))}
                         </tbody>
                     </table>
+                    </div>
                     {mine.data && mine.data.data.length === 0 && <p className="px-6 py-10 text-center text-sm text-slate-400">Aún no has reservado tutorías.</p>}
                 </div>
             </section>

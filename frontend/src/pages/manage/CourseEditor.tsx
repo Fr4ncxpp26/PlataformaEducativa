@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 
@@ -194,7 +194,7 @@ export default function CourseEditor() {
     const [msg, setMsg] = useState('');
     const [isStudentPreview, setIsStudentPreview] = useState(false);
     const [isUpdatingPublication, setIsUpdatingPublication] = useState(false);
-    const [publishedOverride, setPublishedOverride] = useState<boolean | null>(null);
+    const [publishedOverride, setPublishedOverride] = useState<{ courseId: string; value: boolean } | null>(null);
 
     const rawCourse = data?.data;
 
@@ -232,24 +232,11 @@ export default function CourseEditor() {
 
     // Mantiene el estado visual correcto mientras useApi realiza la recarga.
     const displayedCourse = useMemo<CourseFull | undefined>(() => {
-        if (!course || publishedOverride === null) return course;
-        return { ...course, is_published: publishedOverride };
+        if (!course || !publishedOverride || publishedOverride.courseId !== course.id || course.is_published === publishedOverride.value) return course;
+        return { ...course, is_published: publishedOverride.value };
     }, [course, publishedOverride]);
 
-    useEffect(() => {
-        setPublishedOverride(null);
-    }, [course?.id]);
-
-    useEffect(() => {
-        if (
-            publishedOverride !== null &&
-            course?.is_published === publishedOverride
-        ) {
-            setPublishedOverride(null);
-        }
-    }, [course?.is_published, publishedOverride]);
-
-    const activeCourseId = displayedCourse?.id ?? (isNew ? null : id ?? null);
+    const activeCourseSlug = displayedCourse?.slug ?? null;
 
     const togglePublish = async (): Promise<void> => {
         if (!displayedCourse?.id || isUpdatingPublication) return;
@@ -264,7 +251,7 @@ export default function CourseEditor() {
                 body: { is_published: nextPublishedState },
             });
 
-            setPublishedOverride(nextPublishedState);
+            setPublishedOverride({ courseId: displayedCourse.id, value: nextPublishedState });
             // reload() solo dispara la recarga; no devuelve una promesa.
             reload();
         } catch (e) {
@@ -284,55 +271,32 @@ export default function CourseEditor() {
 
     return (
         <div>
-            {/* Barra superior de control */}
-            <div className="sticky top-0 z-30 mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-900/95 px-5 py-3.5 backdrop-blur">
-                <div className="flex items-center gap-3">
-                    <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" />
-                    <div>
-                        <h2 className="text-sm font-semibold text-zinc-100">
-                            {isStudentPreview
-                                ? 'Modo Vista Previa del Alumno Activo'
-                                : 'Editor de Curso (Modo Profesor)'}
-                        </h2>
-                        <p className="text-xs text-zinc-400">
-                            {isStudentPreview
-                                ? 'Estás visualizando las lecciones, PDFs y quizzes tal como los verá el estudiante.'
-                                : 'Sube portadas, adjunta PDFs en el currículum y organiza tus módulos.'}
-                        </p>
-                    </div>
+            <div className="sticky top-16 z-30 mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-900/95 px-4 py-3 backdrop-blur sm:px-5">
+                <div className="min-w-0 flex-1">
+                    <h2 className="text-sm font-semibold text-zinc-100">{isStudentPreview ? 'Vista pública del curso' : 'Editor de curso'}</h2>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+                        {isStudentPreview ? 'Esta es la ficha publicada que verá una persona visitante.' : 'Completa los datos, organiza el contenido y revisa el progreso antes de publicar.'}
+                    </p>
                 </div>
-
-                <div className="flex items-center gap-3">
-                    {!isNew && (
-                        <button
-                            type="button"
-                            onClick={() => setIsStudentPreview((previous) => !previous)}
-                            className={`rounded-lg border px-4 py-2 text-xs font-semibold transition-all ${isStudentPreview
-                                    ? 'border-amber-500/40 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30'
-                                    : 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
-                                }`}
-                        >
-                            {isStudentPreview
-                                ? '← Volver al Editor'
-                                : '👁️ Vista Previa como Alumno'}
-                        </button>
+                <div className="flex flex-wrap items-center gap-2">
+                    {displayedCourse?.is_published && activeCourseSlug && (
+                        <>
+                            <button type="button" onClick={() => setIsStudentPreview((previous) => !previous)} aria-pressed={isStudentPreview}
+                                className="rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-200 hover:bg-emerald-500/25">
+                                {isStudentPreview ? 'Volver al editor' : 'Vista previa pública'}
+                            </button>
+                            <Link to={`/cursos/${activeCourseSlug}`} target="_blank" rel="noopener noreferrer"
+                                className="rounded-lg bg-zinc-800 px-3 py-2 text-xs font-medium text-zinc-200 hover:bg-zinc-700">
+                                Abrir ficha pública ↗
+                            </Link>
+                        </>
                     )}
-
-                    {activeCourseId && (
-                        <Link
-                            to={`/learn/${activeCourseId}?preview=true`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="rounded-lg bg-zinc-800 px-3.5 py-2 text-xs font-medium text-zinc-200 hover:bg-zinc-700"
-                        >
-                            Abrir Reproductor Completo ↗
-                        </Link>
-                    )}
+                    {!isNew && !displayedCourse?.is_published && <span className="text-xs text-amber-300">Publica el curso para habilitar la vista previa pública.</span>}
                 </div>
             </div>
 
             {/* Vista previa del alumno */}
-            {isStudentPreview && activeCourseId ? (
+            {isStudentPreview && activeCourseSlug && displayedCourse?.is_published ? (
                 <div className="overflow-hidden rounded-2xl border-2 border-emerald-500/40 bg-zinc-950 shadow-2xl">
                     <div className="flex items-center justify-between border-b border-emerald-500/20 bg-emerald-950/50 px-4 py-2 text-xs text-emerald-300">
                         <span>Simulación de Estudiante en Tiempo Real</span>
@@ -341,9 +305,9 @@ export default function CourseEditor() {
                         </span>
                     </div>
                     <iframe
-                        src={`/learn/${activeCourseId}?preview=true`}
-                        title="Vista Previa Alumno"
-                        className="h-[78vh] w-full border-0"
+                        src={`/cursos/${activeCourseSlug}`}
+                        title={`Vista pública del curso ${displayedCourse.title}`}
+                        className="h-[78vh] min-h-[520px] w-full border-0"
                     />
                 </div>
             ) : (
@@ -386,11 +350,15 @@ export default function CourseEditor() {
                         />
                     )}
 
-                    <div className="mb-6 flex gap-1 overflow-x-auto border-b border-slate-200">
+                    <div role="tablist" aria-label="Secciones del curso" className="mb-6 flex gap-1 overflow-x-auto border-b border-slate-200">
                         {TABS.map((item) => (
                             <button
                                 key={item.id}
+                                id={`course-tab-${item.id}`}
                                 type="button"
+                                role="tab"
+                                aria-selected={tab === item.id}
+                                aria-controls="course-editor-panel"
                                 disabled={isNew && item.id !== 'datos'}
                                 onClick={() => setTab(item.id)}
                                 className={`whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 ${tab === item.id
@@ -403,6 +371,7 @@ export default function CourseEditor() {
                         ))}
                     </div>
 
+                    <div id="course-editor-panel" role="tabpanel" aria-labelledby={`course-tab-${tab}`}>
                     {tab === 'datos' && (
                         <CourseForm
                             key={displayedCourse?.id ?? 'new'}
@@ -435,6 +404,7 @@ export default function CourseEditor() {
                     {displayedCourse && tab === 'alumnos' && (
                         <StudentsPanel courseId={displayedCourse.id} />
                     )}
+                    </div>
                 </>
             )}
         </div>

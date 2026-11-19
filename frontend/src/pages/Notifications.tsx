@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Bell, BellOff, CheckCheck, ExternalLink, RefreshCw, Settings2, Smartphone, Trash2 } from 'lucide-react';
 import { Alert, Button, Spinner } from '../components/ui';
 import { api } from '../lib/api';
+import { useApi } from '../hooks/useApi';
 import { enablePushOnThisDevice, removePushFromThisDevice } from '../lib/push';
 
 type Category = 'tutoring' | 'academic' | 'courses' | 'account' | 'system';
@@ -26,10 +27,8 @@ interface Preferences {
     system_enabled: boolean;
 }
 
-interface InboxResponse {
-    data: NotificationItem[];
-    unreadCount: number;
-}
+interface InboxResponse { data: NotificationItem[]; unreadCount: number }
+interface PreferencesResponse { data: Preferences; pushAvailable: boolean }
 
 const preferenceLabels: { key: keyof Omit<Preferences, 'user_id' | 'push_enabled'>; label: string; description: string }[] = [
     { key: 'tutoring_enabled', label: 'Tutorías', description: 'Reservas, cambios, cancelaciones y recordatorios.' },
@@ -39,55 +38,50 @@ const preferenceLabels: { key: keyof Omit<Preferences, 'user_id' | 'push_enabled
     { key: 'system_enabled', label: 'Sistema', description: 'Avisos técnicos y de funcionamiento de la plataforma.' },
 ];
 
-const formatDate = (value: string) => new Intl.DateTimeFormat('es-MX', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-}).format(new Date(value));
+const formatDate = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Fecha no disponible';
+    return new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+};
 
 export default function Notifications() {
-    const [items, setItems] = useState<NotificationItem[]>([]);
-    const [unreadCount, setUnreadCount] = useState(0);
-    const [preferences, setPreferences] = useState<Preferences | null>(null);
-    const [pushAvailable, setPushAvailable] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const inbox = useApi<InboxResponse>('/notifications?limit=100');
+    const preferenceQuery = useApi<PreferencesResponse>('/notifications/preferences');
     const [saving, setSaving] = useState<string | null>(null);
-    const [error, setError] = useState('');
+    const [actionError, setActionError] = useState('');
     const [success, setSuccess] = useState('');
 
-    const load = useCallback(async () => {
-        setLoading(true);
-        setError('');
-        try {
-            const [inbox, prefs] = await Promise.all([
-                api<InboxResponse>('/notifications?limit=100'),
-                api<{ data: Preferences; pushAvailable: boolean }>('/notifications/preferences'),
-            ]);
-            setItems(inbox.data);
-            setUnreadCount(inbox.unreadCount);
-            setPreferences(prefs.data);
-            setPushAvailable(prefs.pushAvailable);
-        } catch (e) {
-            setError(e instanceof Error ? e.message : 'No se pudieron cargar tus notificaciones.');
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+    const items = inbox.data?.data ?? [];
+    const unreadCount = inbox.data?.unreadCount ?? 0;
+    const preferences = preferenceQuery.data?.data ?? null;
+    const pushAvailable = preferenceQuery.data?.pushAvailable ?? false;
+    const loading = inbox.loading || preferenceQuery.loading;
+    const error = actionError || inbox.error || preferenceQuery.error;
 
-    useEffect(() => { void load(); }, [load]);
+    const refresh = () => {
+        setActionError('');
+        setSuccess('');
+        inbox.reload();
+        preferenceQuery.reload();
+    };
+
+    const savePreferences = (next: Preferences) => {
+        preferenceQuery.updateData((current) => current ? { ...current, data: next } : current);
+    };
 
     const updatePreference = async (key: keyof Preferences, value: boolean) => {
         setSaving(key);
-        setError('');
+        setActionError('');
         setSuccess('');
         try {
             const result = await api<{ data: Preferences }>('/notifications/preferences', {
                 method: 'PATCH',
                 body: { [key]: value },
             });
-            setPreferences(result.data);
+            savePreferences(result.data);
             setSuccess('Preferencias guardadas.');
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'No se pudo guardar la preferencia.');
+            setActionError(e instanceof Error ? e.message : 'No se pudo guardar la preferencia.');
         } finally {
             setSaving(null);
         }
@@ -95,33 +89,29 @@ export default function Notifications() {
 
     const enablePush = async () => {
         setSaving('push');
-        setError('');
+        setActionError('');
         setSuccess('');
         try {
             await enablePushOnThisDevice();
-            const result = await api<{ data: Preferences }>('/notifications/preferences');
-            setPreferences(result.data);
+            const result = await api<PreferencesResponse>('/notifications/preferences');
+            preferenceQuery.updateData(result);
             setSuccess('Este dispositivo quedó registrado para recibir notificaciones.');
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'No se pudieron activar las notificaciones push.');
+            setActionError(e instanceof Error ? e.message : 'No se pudieron activar las notificaciones push.');
         } finally {
             setSaving(null);
         }
     };
 
-    const disablePush = async () => {
-        await updatePreference('push_enabled', false);
-    };
-
     const testPush = async () => {
         setSaving('test');
-        setError('');
+        setActionError('');
         setSuccess('');
         try {
             const result = await api<{ message: string }>('/notifications/push/test', { method: 'POST' });
             setSuccess(result.message);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'No se pudo enviar la prueba push.');
+            setActionError(e instanceof Error ? e.message : 'No se pudo enviar la prueba push.');
         } finally {
             setSaving(null);
         }
@@ -129,15 +119,15 @@ export default function Notifications() {
 
     const removeDevice = async () => {
         setSaving('device');
-        setError('');
+        setActionError('');
         setSuccess('');
         try {
             await removePushFromThisDevice();
-            const result = await api<{ data: Preferences }>('/notifications/preferences');
-            setPreferences(result.data);
+            const result = await api<PreferencesResponse>('/notifications/preferences');
+            preferenceQuery.updateData(result);
             setSuccess('Este dispositivo se desvinculó correctamente.');
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'No se pudo desvincular este dispositivo.');
+            setActionError(e instanceof Error ? e.message : 'No se pudo desvincular este dispositivo.');
         } finally {
             setSaving(null);
         }
@@ -147,40 +137,51 @@ export default function Notifications() {
         if (item.read_at) return;
         try {
             await api(`/notifications/${item.id}/read`, { method: 'PATCH' });
-            setItems((current) => current.map((entry) =>
-                entry.id === item.id ? { ...entry, read_at: new Date().toISOString() } : entry,
-            ));
-            setUnreadCount((count) => Math.max(0, count - 1));
+            inbox.updateData((current) => current ? {
+                ...current,
+                data: current.data.map((entry) => entry.id === item.id
+                    ? { ...entry, read_at: new Date().toISOString() }
+                    : entry),
+                unreadCount: Math.max(0, current.unreadCount - 1),
+            } : current);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'No se pudo actualizar la notificación.');
+            setActionError(e instanceof Error ? e.message : 'No se pudo actualizar la notificación.');
         }
     };
 
     const markAllRead = async () => {
         setSaving('all-read');
+        setActionError('');
         try {
             await api('/notifications/read-all', { method: 'POST' });
-            setItems((current) => current.map((item) => ({ ...item, read_at: item.read_at ?? new Date().toISOString() })));
-            setUnreadCount(0);
+            const now = new Date().toISOString();
+            inbox.updateData((current) => current ? {
+                ...current,
+                data: current.data.map((item) => ({ ...item, read_at: item.read_at ?? now })),
+                unreadCount: 0,
+            } : current);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'No se pudieron marcar como leídas.');
+            setActionError(e instanceof Error ? e.message : 'No se pudieron marcar como leídas.');
         } finally {
             setSaving(null);
         }
     };
 
     const deleteItem = async (id: string) => {
+        const removed = items.find((item) => item.id === id);
         try {
             await api(`/notifications/${id}`, { method: 'DELETE' });
-            const removed = items.find((item) => item.id === id);
-            setItems((current) => current.filter((item) => item.id !== id));
-            if (removed && !removed.read_at) setUnreadCount((count) => Math.max(0, count - 1));
+            inbox.updateData((current) => current ? {
+                ...current,
+                data: current.data.filter((item) => item.id !== id),
+                unreadCount: removed && !removed.read_at ? Math.max(0, current.unreadCount - 1) : current.unreadCount,
+            } : current);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'No se pudo eliminar la notificación.');
+            setActionError(e instanceof Error ? e.message : 'No se pudo eliminar la notificación.');
         }
     };
 
-    if (loading && !preferences) return <Spinner />;
+    if (loading && !inbox.data && !preferenceQuery.data) return <Spinner />;
 
     return (
         <div className="space-y-6">
@@ -190,8 +191,8 @@ export default function Notifications() {
                     <h1 className="mt-1 text-2xl font-bold text-slate-900">Notificaciones</h1>
                     <p className="mt-1 text-sm text-slate-500">Consulta novedades y controla cómo quieres recibir avisos.</p>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="ghost" onClick={() => void load()}><RefreshCw size={15} className="mr-2" /> Actualizar</Button>
+                <div className="flex flex-wrap gap-2">
+                    <Button variant="ghost" onClick={refresh}><RefreshCw size={15} className="mr-2" /> Actualizar</Button>
                     <Button onClick={() => void markAllRead()} disabled={!unreadCount || saving === 'all-read'} loading={saving === 'all-read'}>
                         <CheckCheck size={15} className="mr-2" /> Marcar todo leído
                     </Button>
@@ -211,6 +212,7 @@ export default function Notifications() {
                         <Bell className="text-slate-400" size={19} />
                     </div>
 
+                    {inbox.loading && items.length > 0 && <p className="px-5 py-2 text-xs text-slate-400" role="status">Actualizando bandeja…</p>}
                     {items.length === 0 ? (
                         <div className="px-6 py-16 text-center">
                             <Bell className="mx-auto mb-3 text-slate-300" size={34} />
@@ -221,7 +223,7 @@ export default function Notifications() {
                         <div className="divide-y divide-slate-100">
                             {items.map((item) => (
                                 <article key={item.id} className={`flex gap-3 px-5 py-4 transition ${item.read_at ? 'bg-white' : 'bg-indigo-50/50'}`}>
-                                    <span className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${item.read_at ? 'bg-slate-200' : 'bg-indigo-600'}`} />
+                                    <span className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${item.read_at ? 'bg-slate-200' : 'bg-indigo-600'}`} aria-hidden="true" />
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <h3 className="text-sm font-semibold text-slate-900">{item.title}</h3>
@@ -268,7 +270,7 @@ export default function Notifications() {
                                 <Button className="w-full" onClick={() => void testPush()} loading={saving === 'test'}>
                                     <Bell size={15} className="mr-2" /> Enviar notificación de prueba
                                 </Button>
-                                <Button variant="ghost" className="w-full" onClick={() => void disablePush()} loading={saving === 'push_enabled'}>
+                                <Button variant="ghost" className="w-full" onClick={() => void updatePreference('push_enabled', false)} loading={saving === 'push_enabled'}>
                                     <BellOff size={15} className="mr-2" /> Desactivar push en todos mis dispositivos
                                 </Button>
                                 <button type="button" disabled={saving === 'device'} onClick={() => void removeDevice()} className="w-full text-xs font-medium text-slate-500 hover:text-red-600 disabled:opacity-50">

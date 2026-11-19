@@ -28,7 +28,8 @@ export default function TeacherDashboard() {
                 <StatCard label="Tutorías próximas" value={t.upcoming} icon={CalendarClock} tone="amber" />
             </div>
             <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <div className="max-w-full overflow-x-auto" role="region" aria-label="Tabla de cursos del profesor; desplázate horizontalmente para ver todas las columnas" tabIndex={0}>
+<table className="min-w-full divide-y divide-slate-200 text-sm">
                     <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Curso</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3">Alumnos</th><th className="px-4 py-3">Graduados</th><th /></tr></thead>
                     <tbody className="divide-y divide-slate-100">
                         {data.courses.map((c) => (
@@ -41,6 +42,7 @@ export default function TeacherDashboard() {
                         ))}
                     </tbody>
                 </table>
+                    </div>
                 {data.courses.length === 0 && <p className="px-6 py-12 text-center text-sm text-slate-400">Aún no has creado cursos. ¡Crea el primero!</p>}
             </section>
         </div>

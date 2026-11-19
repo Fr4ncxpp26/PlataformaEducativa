@@ -59,7 +59,8 @@ export default function StudentDetail() {
             <section>
                 <h2 className="mb-3 font-semibold text-slate-800">Calificaciones recientes</h2>
                 <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                    <div className="max-w-full overflow-x-auto" role="region" aria-label="Tabla de avance del alumno; desplázate horizontalmente para ver todas las columnas" tabIndex={0}>
+<table className="min-w-full divide-y divide-slate-200 text-sm">
                         <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Fecha</th><th className="px-4 py-3">Curso</th><th className="px-4 py-3">Evaluación</th><th className="px-4 py-3">Intento</th><th className="px-4 py-3">Nota</th></tr></thead>
                         <tbody className="divide-y divide-slate-100">
                             {d.attempts.map((a, i) => (
@@ -71,6 +72,7 @@ export default function StudentDetail() {
                             ))}
                         </tbody>
                     </table>
+                    </div>
                     {d.attempts.length === 0 && <p className="px-6 py-10 text-center text-sm text-slate-400">Sin evaluaciones realizadas.</p>}
                 </div>
             </section>

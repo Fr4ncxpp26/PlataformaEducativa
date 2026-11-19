@@ -1,7 +1,8 @@
 import { SESSION_OPTIONS } from '../../lib/constants';
 import { cap, formatDate } from '../../lib/format';
 import { useOptions } from '../../hooks/UseOptions';
-import { Badge, statusTone } from '../../components/admin/AdminUI';
+import { Badge } from '../../components/admin/AdminUI';
+import { statusTone } from '../../components/admin/adminUtils';
 import ResourceTable from '../../components/admin/ResourceTable';
 import type { FieldDef } from '../../components/admin/FormModal';
 
